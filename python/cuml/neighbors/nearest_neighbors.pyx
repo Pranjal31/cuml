@@ -72,6 +72,19 @@ cdef extern from "cuml/neighbors/knn.hpp" namespace "ML":
         int k
     ) except +
 
+    void sweet_knn(
+        cumlHandle &handle,
+        float **input,
+        int *sizes,
+        int n_params,
+        int D,
+        float *search_items,
+        int n,
+        long *res_I,
+        float *res_D,
+        int k
+    ) except +
+
     void chunk_host_array(
         cumlHandle &handle,
         const float *ptr,
@@ -173,7 +186,7 @@ class NearestNeighbors(Base):
     <https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors>`_.
     """
     def __init__(self, n_neighbors=5, n_gpus=1, devices=None,
-                 verbose=False, should_downcast=None, handle=None):
+                 verbose=False, should_downcast=None, handle=None, algorithm="full"):
         """
         Construct the NearestNeighbors object for training and querying.
 
@@ -194,6 +207,7 @@ class NearestNeighbors(Base):
         self.n_indices = 0
         self.sizes = None
         self.input = None
+	self.algorithm = algorithm
 
     def __del__(self):
 
@@ -444,20 +458,33 @@ class NearestNeighbors(Base):
         cdef cumlHandle* handle_ = <cumlHandle*><size_t>self.handle.getHandle()
 
         cdef uintptr_t x_ctype_st = X_ctype
-
-        brute_force_knn(
-            handle_[0],
-            <float**>inputs,
-            <int*>sizes,
-            <int>self.n_indices,
-            <int>self.n_dims,
-            <float*>x_ctype_st,
-            <int>N,
-            <long*>I_ptr,
-            <float*>D_ptr,
-            <int>k
-        )
-
+	
+	if self.algorithm == "full":
+            brute_force_knn(
+                handle_[0],
+                <float**>inputs,
+                <int*>sizes,
+                <int>self.n_indices,
+                <int>self.n_dims,
+                <float*>x_ctype_st,
+                <int>N,
+                <long*>I_ptr,
+                <float*>D_ptr,
+                <int>k
+            )
+        elif self.algorithm == "sweet":
+            sweet_knn(
+                handle_[0],
+                <float**>inputs,
+                <int*>sizes,
+                <int>self.n_indices,
+                <int>self.n_dims,
+                <float*>x_ctype_st,
+                <int>N,
+                <long*>I_ptr,
+                <float*>D_ptr,
+                <int>k
+            )
         I_ndarr = I_ndarr.reshape((N, k))
         D_ndarr = D_ndarr.reshape((N, k))
 
@@ -493,15 +520,29 @@ class NearestNeighbors(Base):
 
         cdef cumlHandle* handle_ = <cumlHandle*><size_t>self.handle.getHandle()
 
-        brute_force_knn(
-            handle_[0],
-            <float**>input_arr,
-            <int*>sizes_arr,
-            <int>self.n_indices,
-            <int>self.n_dims,
-            <float*>x,
-            <int>N,
-            <long*>inds,
-            <float*>dists,
-            <int>k
-        )
+	if self.algorithm == "full":
+            brute_force_knn(
+                handle_[0],
+                <float**>inputs,
+                <int*>sizes,
+                <int>self.n_indices,
+                <int>self.n_dims,
+                <float*>x_ctype_st,
+                <int>N,
+                <long*>I_ptr,
+                <float*>D_ptr,
+                <int>k
+            )
+        elif self.algorithm == "sweet":
+            sweet_knn(
+                handle_[0],
+                <float**>inputs,
+                <int*>sizes,
+                <int>self.n_indices,
+                <int>self.n_dims,
+                <float*>x_ctype_st,
+                <int>N,
+                <long*>I_ptr,
+                <float*>D_ptr,
+                <int>k
+            )

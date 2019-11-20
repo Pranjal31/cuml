@@ -49,6 +49,25 @@ void brute_force_knn(cumlHandle &handle, float **input, int *sizes,
                      long *res_I, float *res_D, int k);
 
 /**
+ * @brief Flat C++ API function to perform a sweet knn on
+ * a series of input arrays and combine the results into a single
+ * output array for indexes and distances.
+ *
+ * @param handle the cuml handle to use
+ * @param input an array of pointers to the input arrays
+ * @param sizes an array of sizes of input arrays
+ * @param n_params array size of input and sizes
+ * @param D the dimensionality of the arrays
+ * @param search_items array of items to search of dimensionality D
+ * @param n number of rows in search_items
+ * @param res_I the resulting index array of size n * k
+ * @param res_D the resulting distance array of size n * k
+ * @param k the number of nearest neighbors to return
+ */
+void sweet_knn(cumlHandle &handle, float **input, int *sizes,
+                     int n_params, int D, float *search_items, int n,
+                     long *res_I, float *res_D, int k);
+/**
    * @brief A flat C++ API function that chunks a host array up into
    * some number of different devices
    *
