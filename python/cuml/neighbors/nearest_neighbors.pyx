@@ -207,7 +207,7 @@ class NearestNeighbors(Base):
         self.n_indices = 0
         self.sizes = None
         self.input = None
-	self.algorithm = algorithm
+        self.algorithm = algorithm
 
     def __del__(self):
 
@@ -459,7 +459,7 @@ class NearestNeighbors(Base):
 
         cdef uintptr_t x_ctype_st = X_ctype
 	
-	if self.algorithm == "full":
+        if self.algorithm == "full":
             brute_force_knn(
                 handle_[0],
                 <float**>inputs,
@@ -520,29 +520,29 @@ class NearestNeighbors(Base):
 
         cdef cumlHandle* handle_ = <cumlHandle*><size_t>self.handle.getHandle()
 
-	if self.algorithm == "full":
+        if self.algorithm == "full":
             brute_force_knn(
                 handle_[0],
-                <float**>inputs,
-                <int*>sizes,
+                <float**>input_arr,
+                <int*>sizes_arr,
                 <int>self.n_indices,
                 <int>self.n_dims,
-                <float*>x_ctype_st,
+                <float*>x,
                 <int>N,
-                <long*>I_ptr,
-                <float*>D_ptr,
+                <long*>inds,
+                <float*>dists,
                 <int>k
             )
         elif self.algorithm == "sweet":
             sweet_knn(
                 handle_[0],
-                <float**>inputs,
-                <int*>sizes,
+                <float**>input_arr,
+                <int*>sizes_arr,
                 <int>self.n_indices,
                 <int>self.n_dims,
-                <float*>x_ctype_st,
+                <float*>x,
                 <int>N,
-                <long*>I_ptr,
-                <float*>D_ptr,
+                <long*>inds,
+                <float*>dists,
                 <int>k
             )
