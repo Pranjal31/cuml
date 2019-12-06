@@ -91,6 +91,12 @@ __device__ float atomicAdd_float(float *address, float val) {
 void check(cudaError_t status, const char *message) {
   if (status != cudaSuccess) cout << message << endl;
 }
+void inline checkError(cublasStatus_t status, const char *msg) {
+  if (status != CUBLAS_STATUS_SUCCESS) {
+    printf("%s", msg);
+    exit(EXIT_FAILURE);
+  }
+}
 
 __global__ void Norm(float *point, float *norm, int size, int dim) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -246,6 +252,9 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                  R2all_dyn_v *&rep2q_dyn_v, R2all_dyn_v *&rep2s_dyn_v,
                  float *&query2reps, R2all_dyn_p *&rep2q_dyn_p,
                  R2all_dyn_p *&rep2s_dyn_p, int *&reorder_members) {
+  cublasHandle_t handle;
+  checkError(cublasCreate(&handle), "cublasCreate() error!\n");
+
   cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
   cudaError_t status;
 
@@ -344,8 +353,13 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   //cudaDeviceSynchronize();
   struct timespec t3, t4, t35;
   timePoint(t3);
-  cublasSgemm('T', 'N', query_nb, qrep_nb, dim, (float)-2.0, queries_dev, dim,
-              qreps_dev, dim, (float)0.0, query2reps_dev, query_nb);
+  /*cublasSgemm('T', 'N', query_nb, qrep_nb, dim, (float)-2.0, queries_dev, dim,
+              qreps_dev, dim, (float)0.0, query2reps_dev, query_nb); */
+  const float alpha = 2.0f;
+  const float beta = 0.0f;
+  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
+              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
+              query_nb);
   cudaDeviceSynchronize();
   timePoint(t35);
   printf("cublasSgemm warm up time %f\n", timeLen(t3, t35));
@@ -353,8 +367,11 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   Norm<<<(query_nb + 255) / 256, 256>>>(queries_dev, queryNorm_dev, query_nb,
                                         dim);
 
-  cublasSgemm('T', 'N', query_nb, qrep_nb, dim, (float)-2.0, queries_dev, dim,
-              qreps_dev, dim, (float)0.0, query2reps_dev, query_nb);
+  /*  cublasSgemm('T', 'N', query_nb, qrep_nb, dim, (float)-2.0, queries_dev, dim,
+              qreps_dev, dim, (float)0.0, query2reps_dev, query_nb); */
+  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
+              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
+              query_nb);
 
   cudaDeviceSynchronize();
   timePoint(t3);
@@ -413,8 +430,12 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   timePoint(t3);
   Norm<<<(source_nb + 255) / 256, 256>>>(sources_dev, sourceNorm_dev, source_nb,
                                          dim);
-  cublasSgemm('T', 'N', source_nb, srep_nb, dim, (float)-2.0, sources_dev, dim,
-              sreps_dev, dim, (float)0.0, source2reps_dev, source_nb);
+  /*cublasSgemm('T', 'N', source_nb, srep_nb, dim, (float)-2.0, sources_dev, dim,
+              sreps_dev, dim, (float)0.0, source2reps_dev, source_nb);*/
+  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
+              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
+              query_nb);
+
   cudaDeviceSynchronize();
   timePoint(t35);
   printf("source rep first part time %f\n", timeLen(t3, t35));
@@ -498,8 +519,11 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   cudaFree(query2reps_dev);
   cudaMalloc((void **)&query2reps_dev, query_nb * srep_nb * sizeof(float));
   dim3 grid2D_qsrep((query_nb + 15) / 16, (srep_nb + 15) / 16, 1);
-  cublasSgemm('T', 'N', query_nb, srep_nb, dim, (float)-2.0, queries_dev, dim,
-              sreps_dev, dim, (float)0.0, query2reps_dev, query_nb);
+  /*cublasSgemm('T', 'N', query_nb, srep_nb, dim, (float)-2.0, queries_dev, dim,
+              sreps_dev, dim, (float)0.0, query2reps_dev, query_nb);*/
+  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
+              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
+              query_nb);
   AddAll<<<grid2D_qsrep, block2D>>>(queryNorm_dev, srepNorm_dev, query2reps_dev,
                                     query_nb, srep_nb);
   //cudaDeviceSynchronize();
@@ -1116,7 +1140,8 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   // where do these varianles come from?
   query_nb = n;
   source_nb = n;
-  dim = D qrep_nb = 1;
+  dim = D;
+  qrep_nb = 1;
   srep_nb = 1;
   K = k;
   //char *query_data = ;
@@ -1129,9 +1154,9 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   cudaMemcpy(sources, search_items, n * D * sizeof(float),
              cudaMemcpyDeviceToHost);
   cudaMemcpy(queries, search_items, n * D * sizeof(float),
-             cudaMemcpyDeviceToHost)
+             cudaMemcpyDeviceToHost);
 
-    qreps = (float *)malloc(qrep_nb * dim * sizeof(float));
+  qreps = (float *)malloc(qrep_nb * dim * sizeof(float));
   sreps = (float *)malloc(srep_nb * dim * sizeof(float));
   P2R *q2rep = (P2R *)malloc(query_nb * sizeof(P2R));
   P2R *s2rep = (P2R *)malloc(source_nb * sizeof(P2R));
@@ -1304,7 +1329,7 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   free(rep2q_dyn_v);
   free(rep2s_static);
   free(rep2s_dyn_v);
-  return 0;
+  return;
 }
 
 /**
