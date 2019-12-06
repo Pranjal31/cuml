@@ -29,6 +29,7 @@
 #include <vector>
 
 // knnjoin includes - TODO -- remove me
+#include <cuml/neighbors/common8.h>
 #include <curand.h>
 #include <curand_kernel.h>
 #include <omp.h>
@@ -37,8 +38,7 @@
 #include <thrust/generate.h>
 #include <thrust/host_vector.h>
 #include <thrust/sort.h>
-#include "common8.h"
-#include "cublas.h"
+#include "cublas_v2.h"
 
 namespace ML {
 
@@ -64,91 +64,90 @@ void brute_force_knn(cumlHandle &handle, float **input, int *sizes,
   MLCommon::Selection::brute_force_knn(input, sizes, n_params, D, search_items,
                                        n, res_I, res_D, k,
                                        handle.getImpl().getStream());
+}
+__device__ __forceinline__ int F2I(float floatVal) {
+  int intVal = __float_as_int(floatVal);
+  return (intVal >= 0) ? intVal : intVal ^ 0x7FFFFFFF;
+}
+__device__ __forceinline__ float I2F(int intVal) {
+  return __int_as_float((intVal >= 0) ? intVal : intVal ^ 0x7FFFFFFF);
+}
+__device__ float atomicMin_float(float *address, float val) {
+  int val_int = F2I(val);
+  int old = atomicMin((int *)address, val_int);
+  return I2F(old);
+}
+__device__ float atomicMax_float(float *address, float val) {
+  int val_int = F2I(val);
+  int old = atomicMax((int *)address, val_int);
+  return I2F(old);
+}
+__device__ float atomicAdd_float(float *address, float val) {
+  int val_int = F2I(val);
+  int old = atomicAdd((int *)address, val_int);
+  return I2F(old);
+}
 
-  __device__ __forceinline__ int F2I(float floatVal) {
-    int intVal = __float_as_int(floatVal);
-    return (intVal >= 0) ? intVal : intVal ^ 0x7FFFFFFF;
-  }
-  __device__ __forceinline__ float I2F(int intVal) {
-    return __int_as_float((intVal >= 0) ? intVal : intVal ^ 0x7FFFFFFF);
-  }
-  __device__ float atomicMin_float(float *address, float val) {
-    int val_int = F2I(val);
-    int old = atomicMin((int *)address, val_int);
-    return I2F(old);
-  }
-  __device__ float atomicMax_float(float *address, float val) {
-    int val_int = F2I(val);
-    int old = atomicMax((int *)address, val_int);
-    return I2F(old);
-  }
-  __device__ float atomicAdd_float(float *address, float val) {
-    int val_int = F2I(val);
-    int old = atomicAdd((int *)address, val_int);
-    return I2F(old);
-  }
+void check(cudaError_t status, const char *message) {
+  if (status != cudaSuccess) cout << message << endl;
+}
 
-  void check(cudaError_t status, const char *message) {
-    if (status != cudaSuccess) cout << message << endl;
+__global__ void Norm(float *point, float *norm, int size, int dim) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid < size) {
+    float dist = 0.0f;
+    for (int i = 0; i < dim; i++) {
+      float tmp = point[tid * dim + i];
+      dist += tmp * tmp;
+    }
+    norm[tid] = dist;
   }
-
-  __global__ void Norm(float *point, float *norm, int size, int dim) {
-    int tid = threadIdx.x + blockIdx.x * blockDim.x;
-    if (tid < size) {
-      float dist = 0.0f;
-      for (int i = 0; i < dim; i++) {
-        float tmp = point[tid * dim + i];
-        dist += tmp * tmp;
+}
+__global__ void AddAll(float *queryNorm_dev, float *repNorm_dev,
+                       float *query2reps_dev, int size, int rep_nb) {
+  int tx = threadIdx.x + blockIdx.x * blockDim.x;
+  int ty = threadIdx.y + blockIdx.y * blockDim.y;
+  if (tx < size && ty < rep_nb) {
+    float temp = query2reps_dev[ty * size + tx];
+    temp += (queryNorm_dev[tx] + repNorm_dev[ty]);
+    query2reps_dev[ty * size + tx] = sqrt(temp);
+  }
+}
+__global__ void findQCluster(float *query2reps_dev, P2R *q2rep_dev, int size,
+                             int rep_nb, float *maxquery_dev,
+                             R2all_static_dev *req2q_static_dev) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  if (tid < size) {
+    float temp = FLT_MAX;
+    int index = -1;
+    for (int i = 0; i < rep_nb; i++) {
+      float tmp = query2reps_dev[i * size + tid];
+      if (temp > tmp) {
+        index = i;
+        temp = tmp;
       }
-      norm[tid] = dist;
     }
+    q2rep_dev[tid] = {index, temp};
+    atomicAdd(&req2q_static_dev[index].npoints, 1);
+    atomicMax_float(&maxquery_dev[index], temp);
   }
-  __global__ void AddAll(float *queryNorm_dev, float *repNorm_dev,
-                         float *query2reps_dev, int size, int rep_nb) {
-    int tx = threadIdx.x + blockIdx.x * blockDim.x;
-    int ty = threadIdx.y + blockIdx.y * blockDim.y;
-    if (tx < size && ty < rep_nb) {
-      float temp = query2reps_dev[ty * size + tx];
-      temp += (queryNorm_dev[tx] + repNorm_dev[ty]);
-      query2reps_dev[ty * size + tx] = sqrt(temp);
-    }
-  }
-  __global__ void findQCluster(float *query2reps_dev, P2R *q2rep_dev, int size,
-                               int rep_nb, float *maxquery_dev,
-                               R2all_static_dev *req2q_static_dev) {
-    int tid = threadIdx.x + blockDim.x * blockIdx.x;
-    if (tid < size) {
-      float temp = FLT_MAX;
-      int index = -1;
-      for (int i = 0; i < rep_nb; i++) {
-        float tmp = query2reps_dev[i * size + tid];
-        if (temp > tmp) {
-          index = i;
-          temp = tmp;
-        }
+}
+__global__ void findTCluster(float *source2reps_dev, P2R *s2rep_dev, int size,
+                             int rep_nb, R2all_static_dev *req2s_static_dev) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  if (tid < size) {
+    float temp = FLT_MAX;
+    int index = -1;
+    for (int i = 0; i < rep_nb; i++) {
+      float tmp = source2reps_dev[i * size + tid];
+      if (temp > tmp) {
+        index = i;
+        temp = tmp;
       }
-      q2rep_dev[tid] = {index, temp};
-      atomicAdd(&req2q_static_dev[index].npoints, 1);
-      atomicMax_float(&maxquery_dev[index], temp);
     }
-  }
-  __global__ void findTCluster(float *source2reps_dev, P2R *s2rep_dev, int size,
-                               int rep_nb, R2all_static_dev *req2s_static_dev) {
-    int tid = threadIdx.x + blockDim.x * blockIdx.x;
-    if (tid < size) {
-      float temp = FLT_MAX;
-      int index = -1;
-      for (int i = 0; i < rep_nb; i++) {
-        float tmp = source2reps_dev[i * size + tid];
-        if (temp > tmp) {
-          index = i;
-          temp = tmp;
-        }
-      }
-      s2rep_dev[tid] = {index, temp};
-      atomicAdd(&req2s_static_dev[index].npoints, 1);
-      //atomicMax_float(&maxquery_dev[index],temp);
-    }
+    s2rep_dev[tid] = {index, temp};
+    atomicAdd(&req2s_static_dev[index].npoints, 1);
+    //atomicMax_float(&maxquery_dev[index],temp);
   }
 }
 __global__ void fillQMembers(P2R *q2rep_dev, int size, int *repsID,
@@ -1306,8 +1305,6 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   free(rep2s_static);
   free(rep2s_dyn_v);
   return 0;
-
-  // ends here - TODO -- remove me
 }
 
 /**
