@@ -288,10 +288,12 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
       qIndex[i * qrep_nb + j] = rand() % query_nb;
   cudaMemcpy(qIndex_dev, qIndex, totalTest * qrep_nb * sizeof(int),
              cudaMemcpyHostToDevice);
-  int *totalSum, *totalSum_dev;
+  //int *totalSum, *totalSum_dev;
+  int *totalSum_dev;
+
   cudaMalloc((void **)&totalSum_dev, totalTest * sizeof(float));
   cudaMemset(totalSum_dev, 0, totalTest * sizeof(float));
-  totalSum = (int *)malloc(totalTest * sizeof(float));
+  //totalSum = (int *)malloc(totalTest * sizeof(float));
 
   selectReps_cuda<<<(totalTest * qrep_nb * qrep_nb + 255) / 256, 256>>>(
     queries_dev, query_nb, qreps_dev, qrep_nb, qIndex_dev, totalSum_dev,
@@ -341,7 +343,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   cudaMemcpy(rep2s_static_dev, rep2s_static, srep_nb * sizeof(R2all_static_dev),
              cudaMemcpyHostToDevice);
   check(status, "Memcpy rep2qs_static failed\n");
-  int block = 256;
+  //int block = 256;
 
   float *queryNorm_dev, *qrepNorm_dev, *sourceNorm_dev, *srepNorm_dev;
   cudaMalloc((void **)&queryNorm_dev, query_nb * sizeof(float));
@@ -549,15 +551,23 @@ void AllocateAndCopyH2D(float *&queries_dev, float *&sources_dev,
   //status = cudaMemcpy(s2rep_dev, s2rep, source_nb * sizeof(P2R), cudaMemcpyHostToDevice);
   //check(status,"Memcpy s2rep failed\n");
 
-  cudaMemcpy(rep2q_static_dev, rep2q_static, qrep_nb * sizeof(R2all_static_dev),
-             cudaMemcpyHostToDevice);
+  /* cudaMemcpy(rep2q_static_dev, rep2q_static, qrep_nb * sizeof(R2all_static_dev),
+             cudaMemcpyHostToDevice); */
+  status =
+    cudaMemcpy(rep2q_static_dev, rep2q_static,
+               qrep_nb * sizeof(R2all_static_dev), cudaMemcpyHostToDevice);
   check(status, "Memcpy rep2qs_static failed\n");
 
-  cudaMemcpy(rep2s_static_dev, rep2s_static, srep_nb * sizeof(R2all_static_dev),
-             cudaMemcpyHostToDevice);
+  /* cudaMemcpy(rep2s_static_dev, rep2s_static, srep_nb * sizeof(R2all_static_dev),
+             cudaMemcpyHostToDevice); */
+  status =
+    cudaMemcpy(rep2s_static_dev, rep2s_static,
+               srep_nb * sizeof(R2all_static_dev), cudaMemcpyHostToDevice);
   check(status, "Memcpy rep2qs_static failed\n");
 
-  printf("sizeof static static_dev %d %d\n", sizeof(R2all_static),
+  /*   printf("sizeof static static_dev %d %d\n", sizeof(R2all_static),
+         sizeof(R2all_static_dev)); */
+  printf("sizeof static static_dev %zu %zu\n", sizeof(R2all_static),
          sizeof(R2all_static_dev));
 
   /*
@@ -750,7 +760,7 @@ __global__ void KNNQuery_base3(
 #endif
 
           int insert = -1;
-          float max_local = 0.0f;
+          //          float max_local = 0.0f;
           for (int kk = 0; kk < Kcount; kk++) {
             if (query2source < knearest[tid * K + kk].dist) {
               insert = kk;
@@ -841,7 +851,7 @@ __global__ void KNNQuery_base2(
 #endif
 
           int insert = -1;
-          float max_local = 0.0f;
+          //          float max_local = 0.0f;
           for (int kk = 0; kk < Kcount; kk++) {
             if (query2source < knearest[tid + kk * query_nb].dist) {
               insert = kk;
@@ -936,7 +946,7 @@ __global__ void KNNQuery_base(
 #endif
 
           int insert = -1;
-          float max_local = 0.0f;
+          //          float max_local = 0.0f;
           for (int kk = 0; kk < Kcount; kk++) {
             if (query2source < knearest[kk].dist) {
               insert = kk;
@@ -1043,7 +1053,7 @@ __global__ void KNNQuery(
 #endif
 
           int insert = -1;
-          float max_local = 0.0f;
+          //          float max_local = 0.0f;
           for (int kk = 0; kk < Kcount; kk++) {
             if (query2source < knearest[ttid * K + kk].dist) {
               insert = kk;
@@ -1269,7 +1279,7 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   std::cout << "-----cuda error string = "
             << cudaGetErrorString(cudaPeekAtLastError()) << std::endl;
 */
-  std::cout << "after AllocateAndCopyH2D" << std::endl;  //FIXME
+  //std::cout << "after AllocateAndCopyH2D" << std::endl;  //FIXME
   print_last_error();
 
   if (cudaGetLastError() != cudaSuccess) cout << "error 16" << endl;
@@ -1328,7 +1338,8 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   int tpq = (2048 * 13) / query_nb;
   IndexDist *knearest_h = (IndexDist *)malloc(query_nb * K * sizeof(IndexDist));
   cudaMalloc((void **)&knearest, query_nb * (tpq + 1) * K * sizeof(IndexDist));
-  int avg_query_nb = int(query_nb / qrep_nb);
+  //  int avg_query_nb = int(query_nb / qrep_nb);
+
   if (tpq > 1) {
     float *theta;
     cudaMalloc((void **)&theta, query_nb * sizeof(float));
