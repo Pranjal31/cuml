@@ -231,15 +231,13 @@ __global__ void selectReps_copy(float *queries_dev, int query_nb,
            dim * sizeof(float));
   }
 }
-void print_last_error()
-/* just run cudaGetLastError() and print the error message if its return value is not cudaSuccess */
-{
-  cudaError_t cudaError;
-
-  cudaError = cudaGetLastError();
+// get last error and print it
+void print_last_error() {
+  cudaError_t cudaError = cudaGetLastError();
   if (cudaError != cudaSuccess) {
-    printf("  cudaGetLastError() returned %d: %s\n", cudaError,
-           cudaGetErrorString(cudaError));
+    printf("+ + + + cudaError: cudaGetLastError() returned %d: %s - %s\n",
+           cudaError, cudaGetErrorName(cudaError),
+           cudaGetErrorString(cudaError));  //FIXME
   }
 }
 void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
@@ -301,6 +299,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
 
   cudaDeviceSynchronize();
   print_last_error();
+  cudaGetLastError();
 
   selectReps_max<<<1, 1>>>(queries_dev, query_nb, qreps_dev, qrep_nb,
                            qIndex_dev, totalSum_dev, totalTest, dim);
@@ -355,7 +354,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   timePoint(t3);
   /*cublasSgemm('T', 'N', query_nb, qrep_nb, dim, (float)-2.0, queries_dev, dim,
               qreps_dev, dim, (float)0.0, query2reps_dev, query_nb); */
-  const float alpha = 2.0f;
+  const float alpha = -2.0f;
   const float beta = 0.0f;
   cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
               queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
@@ -417,7 +416,6 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
 
   reorderMembers<<<(qrep_nb + 255) / 256, 256>>>(
     qrep_nb, qrepsID, reorder_members, rep2q_dyn_p_dev);
-  //cudaDeviceSynchronize();
 
   cudaDeviceSynchronize();
   timePoint(t4);
@@ -432,9 +430,9 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                                          dim);
   /*cublasSgemm('T', 'N', source_nb, srep_nb, dim, (float)-2.0, sources_dev, dim,
               sreps_dev, dim, (float)0.0, source2reps_dev, source_nb);*/
-  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
-              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
-              query_nb);
+  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, source_nb, srep_nb, dim, &alpha,
+              sources_dev, dim, sreps_dev, dim, &beta, source2reps_dev,
+              source_nb);
 
   cudaDeviceSynchronize();
   timePoint(t35);
@@ -521,8 +519,8 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   dim3 grid2D_qsrep((query_nb + 15) / 16, (srep_nb + 15) / 16, 1);
   /*cublasSgemm('T', 'N', query_nb, srep_nb, dim, (float)-2.0, queries_dev, dim,
               sreps_dev, dim, (float)0.0, query2reps_dev, query_nb);*/
-  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
-              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
+  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, srep_nb, dim, &alpha,
+              queries_dev, dim, sreps_dev, dim, &beta, query2reps_dev,
               query_nb);
   AddAll<<<grid2D_qsrep, block2D>>>(queryNorm_dev, srepNorm_dev, query2reps_dev,
                                     query_nb, srep_nb);
@@ -1137,25 +1135,70 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   int rc = pthread_create(&thread2, NULL, work, NULL);
   //cudaFree(0);
 
-  // where do these varianles come from?
-  query_nb = n;
-  source_nb = n;
+  query_nb = 145057;
+  source_nb = 145057;
   dim = D;
-  qrep_nb = 1;
-  srep_nb = 1;
+  qrep_nb = 800;
+  srep_nb = 800;
   K = k;
-  //char *query_data = ;
-  //char *source_data = ;
 
+  /* FIXME */
+  std::cout << "sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "query_nb = " << query_nb << std::endl;
+  std::cout << "source_nb = " << source_nb << std::endl;
+  std::cout << "dim = " << dim << std::endl;
+  std::cout << "qrep_nb = " << qrep_nb << std::endl;
+  std::cout << "srep_nb = " << srep_nb << std::endl;
+  std::cout << "K = " << K << std::endl;
+
+  /*  // with parameters used in run_sample.h
+  query_nb = 145057;
+  source_nb = 145057;
+  dim = 4;
+  qrep_nb = 800;
+  srep_nb = 800;
+  K = 200;
+  */
   sources = (float *)malloc(source_nb * dim * sizeof(float));
+  //std::cout << "after sources malloc" << std::endl;  //FIXME
+  print_last_error();
   queries = (float *)malloc(query_nb * dim * sizeof(float));
+  //std::cout << "after queries malloc`" << std::endl;  //FIXME
+  print_last_error();
 
   //Setup for source and query points.
-  cudaMemcpy(sources, search_items, n * D * sizeof(float),
+  cudaMemcpy(sources, search_items, source_nb * dim * sizeof(float),
              cudaMemcpyDeviceToHost);
-  cudaMemcpy(queries, search_items, n * D * sizeof(float),
+  //std::cout << "after cudaMemCpy1" << std::endl;  //FIXME
+  print_last_error();
+  cudaMemcpy(queries, search_items, query_nb * dim * sizeof(float),
              cudaMemcpyDeviceToHost);
 
+  //std::cout << "after cudaMemCpy2" << std::endl;  //FIXME
+  print_last_error();
+
+  /* // print sources first row -- FIXME
+  std::cout << "sf:" << std::endl;
+  for (int i = 0; i < dim; i++) {
+    std::cout << "^^^ " << sources[i] << std::endl;
+  }
+  // print sources last row -- FIXME
+  std::cout << "sl:" << std::endl;
+  for (int j = 0; j < dim; j++) {
+    std::cout << "^^^ " << sources[dim * (source_nb - 1) + j] << std::endl;
+  }
+
+  // print queries first row -- FIXME
+  std::cout << "qf:" << std::endl;
+  for (int i = 0; i < dim; i++) {
+    std::cout << "}}} " << queries[i] << std::endl;
+  }
+  // print queries last row -- FIXME
+  std::cout << "ql:" << std::endl;
+  for (int j = 0; j < dim; j++) {
+    std::cout << "}}} " << queries[dim * (source_nb - 1) + j] << std::endl;
+  }
+ */
   qreps = (float *)malloc(qrep_nb * dim * sizeof(float));
   sreps = (float *)malloc(srep_nb * dim * sizeof(float));
   P2R *q2rep = (P2R *)malloc(query_nb * sizeof(P2R));
@@ -1168,6 +1211,8 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
     (R2all_dyn_v *)malloc(qrep_nb * sizeof(R2all_dyn_v));
   R2all_dyn_v *rep2s_dyn_v =
     (R2all_dyn_v *)malloc(srep_nb * sizeof(R2all_dyn_v));
+  //std::cout << "after manyMallocs" << std::endl;  //FIXME
+  print_last_error();
 
   float *query2reps = (float *)malloc(query_nb * qrep_nb * sizeof(float));
 
@@ -1186,12 +1231,16 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
     (R2all_dyn_p *)malloc(qrep_nb * sizeof(R2all_dyn_p));
   R2all_dyn_p *rep2s_dyn_p =
     (R2all_dyn_p *)malloc(srep_nb * sizeof(R2all_dyn_p));
+  //std::cout << "after twoMallocs" << std::endl;  //FIXME
+  print_last_error();
   //Select reps
   timePoint(t1);
   //selectReps(queries, query_nb, qreps, qrep_nb);
   //selectReps(sources, source_nb, sreps, srep_nb);
   //cluster queries and sources to reps
   cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
+  //std::cout << "after cudaMalloc" << std::endl;  //FIXME
+  print_last_error();
   //timePoint(t1);
   timePoint(t2);
   printf("cudaFree time %f\n", timeLen(t1, t2));
@@ -1201,6 +1250,8 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
               rep2q_static, rep2s_static, rep2q_dyn_v, rep2s_dyn_v, query2reps,
               rep2q_dyn_p, rep2s_dyn_p, reorder_members);
   //tranfer data structures to GPU.
+  //std::cout << "after clusterReps" << std::endl;  //FIXME
+  print_last_error();
 
   AllocateAndCopyH2D(
     queries_dev, sources_dev, qreps_dev, sreps_dev, maxquery_dev, q2rep_dev,
@@ -1209,6 +1260,18 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
     rep2q_dyn_v, rep2s_dyn_v, query2reps, rep2q_dyn_p, rep2s_dyn_p);
   timePoint(t2);
   printf("prepo time %f\n", timeLen(t1, t2));
+
+  /* print last ERROR -- FIXME */
+  /*  std::cout << "-----cudaPeekAtLastError() = " << cudaPeekAtLastError()
+            << std::endl;
+  std::cout << "-----cuda error name = " << cudaGetErrorName(cudaPeekAtLastError())
+            << std::endl;
+  std::cout << "-----cuda error string = "
+            << cudaGetErrorString(cudaPeekAtLastError()) << std::endl;
+*/
+  std::cout << "after AllocateAndCopyH2D" << std::endl;  //FIXME
+  print_last_error();
+
   if (cudaGetLastError() != cudaSuccess) cout << "error 16" << endl;
 
   //Kernel 1: upperbound for each rep
