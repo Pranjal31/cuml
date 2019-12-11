@@ -988,13 +988,22 @@ __global__ void KNNQuery_theta(P2R *q2rep_dev,
     thetas[tid] = rep2q_static_dev[repIndex].kuboundMax;
   }
 }
-__global__ void KNNQuery(
+/* __global__ void KNNQuery(
   float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
   float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
   R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
   R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
   int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K,
-  IndexDist *knearest, float *thetas, int tpq, int *reorder_members) {
+  IndexDist *knearest, float *thetas, int tpq, int *reorder_members) { */
+
+__global__ void KNNQuery(float *queries_dev, float *sources_dev,
+                         float *sreps_dev, P2R *q2rep_dev,
+                         R2all_static_dev *rep2q_static_dev,
+                         R2all_dyn_p *rep2q_dyn_p_dev,
+                         R2all_static_dev *rep2s_static_dev,
+                         R2all_dyn_p *rep2s_dyn_p_dev, int query_nb, int dim,
+                         int K, IndexDist *knearest, float *thetas, int tpq,
+                         int *reorder_members) {
   int ttid = threadIdx.x + blockIdx.x * blockDim.x;
   int tp = ttid % tpq;
   int tid = ttid / tpq;
@@ -1073,11 +1082,6 @@ __global__ void KNNQuery(
         }
       }
     }
-    /*
-                if(tid == 100)
-                        for(int i = 0; i < K; i++)
-                                printf("tid i Index Dist %d %d %d %.10f\n",tid, i, knearest[tid * K + i].index, knearest[tid * K +i].dist);
-                                */
   }
 }
 
@@ -1339,11 +1343,15 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
     //cudaMemset(theta, 0, query_nb * sizeof(float));
     cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
-    KNNQuery<<<(tpq * query_nb + 255) / 256, 256>>>(
+    /*     KNNQuery<<<(tpq * query_nb + 255) / 256, 256>>>(
       queries_dev, sources_dev, qreps_dev, sreps_dev, query2reps_dev,
       maxquery_dev, q2rep_dev, s2rep_dev, rep2q_static_dev, rep2q_dyn_p_dev,
       rep2s_static_dev, rep2s_dyn_p_dev, query_nb, source_nb, qrep_nb, srep_nb,
-      dim, K, knearest, theta, tpq, reorder_members);
+      dim, K, knearest, theta, tpq, reorder_members); */
+    KNNQuery<<<(tpq * query_nb + 255) / 256, 256>>>(
+      queries_dev, sources_dev, sreps_dev, q2rep_dev, rep2q_static_dev,
+      rep2q_dyn_p_dev, rep2s_static_dev, rep2s_dyn_p_dev, query_nb, dim, K,
+      knearest, theta, tpq, reorder_members);
     final_knearest = knearest + query_nb * tpq * K;
 
     int *tag_base;
