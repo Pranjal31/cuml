@@ -885,13 +885,21 @@ __global__ void KNNQuery_base2(
                 */
   }
 }
-__global__ void KNNQuery_base(
+/* __global__ void KNNQuery_base(
   float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
   float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
   R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
   R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
   int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K,
-  IndexDist *knearest1, int *reorder_members) {
+  IndexDist *knearest1, int *reorder_members) { */
+__global__ void KNNQuery_base(
+      float *queries_dev, float *sources_dev,
+      float *query2reps_dev, P2R *q2rep_dev,
+      R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
+      R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
+      int query_nb,int dim, int K,
+      IndexDist *knearest1, int *reorder_members) {
+
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < query_nb) {
     tid = reorder_members[tid];
@@ -904,14 +912,7 @@ __global__ void KNNQuery_base(
     for (int i = 0; i < rep2q_static_dev[repIndex].noreps; i++) {
       int minlb_rid = rep2q_dyn_p_dev[repIndex].replist[i].index;
       float query2rep = 0.0f;
-      //if(repIndex != minlb_rid){
       query2rep = query2reps_dev[tid + minlb_rid * query_nb];
-      //Edistance_128(queries_dev + tid * dim, sreps_dev + minlb_rid * dim, dim);
-
-      //      atomicAdd(&Total,1);
-      //}
-      //else
-      //      query2rep = q2rep_dev[tid].dist2rep;
 
       for (int j = rep2s_static_dev[minlb_rid].npoints - 1; j >= 0; j--) {
         IndexDist sourcej = rep2s_dyn_p_dev[minlb_rid].sortedmembers[j];
@@ -938,7 +939,6 @@ __global__ void KNNQuery_base(
 #endif
 
           int insert = -1;
-          //          float max_local = 0.0f;
           for (int kk = 0; kk < Kcount; kk++) {
             if (query2source < knearest[kk].dist) {
               insert = kk;
@@ -971,12 +971,6 @@ __global__ void KNNQuery_base(
       }
     }
     memcpy(&knearest1[tid * K], knearest, K * sizeof(IndexDist));
-
-    /*
-                if(tid == 100)
-                        for(int i = 0; i < K; i++)
-                                printf("tid i Index Dist %d %d %d %.10f\n",tid, i, knearest[tid * K + i].index, knearest[tid * K +i].dist);
-                */
   }
 }
 __global__ void KNNQuery_theta(P2R *q2rep_dev,
@@ -1361,9 +1355,9 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
                                            final_knearest, tag_base);
   } else {
     KNNQuery_base<<<(query_nb + 255) / 256, 256>>>(
-      queries_dev, sources_dev, qreps_dev, sreps_dev, query2reps_dev,
-      maxquery_dev, q2rep_dev, s2rep_dev, rep2q_static_dev, rep2q_dyn_p_dev,
-      rep2s_static_dev, rep2s_dyn_p_dev, query_nb, source_nb, qrep_nb, srep_nb,
+      queries_dev, sources_dev, query2reps_dev,
+      q2rep_dev, rep2q_static_dev, rep2q_dyn_p_dev,
+      rep2s_static_dev, rep2s_dyn_p_dev, query_nb,
       dim, K, knearest, reorder_members);
   }
   cudaDeviceSynchronize();
