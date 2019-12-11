@@ -625,12 +625,18 @@ __global__ void RepsUpperBound(float *qreps_dev, float *sreps_dev,
   }
 }
 
-__global__ void FilterReps(
+/* __global__ void FilterReps(
   float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
   float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
   R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
   R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
-  int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K) {
+  int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K) { */
+__global__ void FilterReps(float *qreps_dev, float *sreps_dev,
+                           float *maxquery_dev,
+                           R2all_static_dev *rep2q_static_dev,
+                           R2all_dyn_p *rep2q_dyn_p_dev,
+                           R2all_static_dev *rep2s_static_dev, int qrep_nb,
+                           int srep_nb, int dim, int K) {
   int tidx = threadIdx.x + blockIdx.x * blockDim.x;
   int tidy =
     threadIdx.y + blockIdx.y * blockDim.y;  //calculate reps[tidy].replist;
@@ -1291,12 +1297,9 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   dim3 block(16, 16, 1);
   dim3 grid((srep_nb + block.x - 1) / block.x,
             (qrep_nb + block.y - 1) / block.y, 1);
-  FilterReps<<<grid, block>>>(queries_dev, sources_dev, qreps_dev, sreps_dev,
-                              query2reps_dev, maxquery_dev, q2rep_dev,
-                              s2rep_dev, rep2q_static_dev, rep2q_dyn_p_dev,
-                              rep2s_static_dev, rep2s_dyn_p_dev, query_nb,
-                              source_nb, qrep_nb, srep_nb, dim, K);
-
+  FilterReps<<<grid, block>>>(qreps_dev, sreps_dev, maxquery_dev,
+                              rep2q_static_dev, rep2q_dyn_p_dev,
+                              rep2s_static_dev, qrep_nb, srep_nb, dim, K);
   struct timespec sort_start, sort_end;
   timePoint(sort_start);
   cudaMemcpy(rep2q_static, rep2q_static_dev, qrep_nb * sizeof(R2all_static_dev),
