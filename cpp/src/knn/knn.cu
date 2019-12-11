@@ -240,7 +240,7 @@ void print_last_error() {
            cudaGetErrorString(cudaError));  //FIXME
   }
 }
-void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
+/*void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                  float *&sreps_dev, float *&maxquery_dev, P2R *&q2rep_dev,
                  P2R *&s2rep_dev, R2all_static_dev *&rep2q_static_dev,
                  R2all_static_dev *&rep2s_static_dev,
@@ -249,9 +249,17 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                  R2all_static *&rep2q_static, R2all_static *&rep2s_static,
                  R2all_dyn_v *&rep2q_dyn_v, R2all_dyn_v *&rep2s_dyn_v,
                  float *&query2reps, R2all_dyn_p *&rep2q_dyn_p,
+                 R2all_dyn_p *&rep2s_dyn_p, int *&reorder_members) {*/
+void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
+                 float *&sreps_dev, float *&maxquery_dev, P2R *&q2rep_dev,
+                 P2R *&s2rep_dev, R2all_static_dev *&rep2q_static_dev,
+                 R2all_static_dev *&rep2s_static_dev,
+                 R2all_dyn_p *&rep2q_dyn_p_dev, R2all_dyn_p *&rep2s_dyn_p_dev,
+                 float *&query2reps_dev, R2all_static *&rep2q_static,
+                 R2all_static *&rep2s_static, R2all_dyn_p *&rep2q_dyn_p,
                  R2all_dyn_p *&rep2s_dyn_p, int *&reorder_members) {
-  cublasHandle_t handle;
-  checkError(cublasCreate(&handle), "cublasCreate() error!\n");
+  cublasHandle_t cublas_handle;
+  checkError(cublasCreate(&cublas_handle), "cublasCreate() error!\n");
 
   cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
   cudaError_t status;
@@ -358,8 +366,8 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
               qreps_dev, dim, (float)0.0, query2reps_dev, query_nb); */
   const float alpha = -2.0f;
   const float beta = 0.0f;
-  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
-              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
+  cublasSgemm(cublas_handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim,
+              &alpha, queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
               query_nb);
   cudaDeviceSynchronize();
   timePoint(t35);
@@ -370,8 +378,8 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
 
   /*  cublasSgemm('T', 'N', query_nb, qrep_nb, dim, (float)-2.0, queries_dev, dim,
               qreps_dev, dim, (float)0.0, query2reps_dev, query_nb); */
-  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim, &alpha,
-              queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
+  cublasSgemm(cublas_handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, qrep_nb, dim,
+              &alpha, queries_dev, dim, qreps_dev, dim, &beta, query2reps_dev,
               query_nb);
 
   cudaDeviceSynchronize();
@@ -422,7 +430,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   cudaDeviceSynchronize();
   timePoint(t4);
   printf("query rep time  %f\n", timeLen(t3, t4));
-  float *source2reps = (float *)malloc(source_nb * srep_nb * sizeof(float));
+  //float *source2reps = (float *)malloc(source_nb * srep_nb * sizeof(float));  DEAD-MALLOC
   float *source2reps_dev;
   cudaMalloc((void **)&source2reps_dev, source_nb * srep_nb * sizeof(float));
 
@@ -432,8 +440,8 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                                          dim);
   /*cublasSgemm('T', 'N', source_nb, srep_nb, dim, (float)-2.0, sources_dev, dim,
               sreps_dev, dim, (float)0.0, source2reps_dev, source_nb);*/
-  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, source_nb, srep_nb, dim, &alpha,
-              sources_dev, dim, sreps_dev, dim, &beta, source2reps_dev,
+  cublasSgemm(cublas_handle, CUBLAS_OP_T, CUBLAS_OP_N, source_nb, srep_nb, dim,
+              &alpha, sources_dev, dim, sreps_dev, dim, &beta, source2reps_dev,
               source_nb);
 
   cudaDeviceSynchronize();
@@ -521,8 +529,8 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   dim3 grid2D_qsrep((query_nb + 15) / 16, (srep_nb + 15) / 16, 1);
   /*cublasSgemm('T', 'N', query_nb, srep_nb, dim, (float)-2.0, queries_dev, dim,
               sreps_dev, dim, (float)0.0, query2reps_dev, query_nb);*/
-  cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, srep_nb, dim, &alpha,
-              queries_dev, dim, sreps_dev, dim, &beta, query2reps_dev,
+  cublasSgemm(cublas_handle, CUBLAS_OP_T, CUBLAS_OP_N, query_nb, srep_nb, dim,
+              &alpha, queries_dev, dim, sreps_dev, dim, &beta, query2reps_dev,
               query_nb);
   AddAll<<<grid2D_qsrep, block2D>>>(queryNorm_dev, srepNorm_dev, query2reps_dev,
                                     query_nb, srep_nb);
@@ -1247,22 +1255,28 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   timePoint(t1);
   //selectReps(queries, query_nb, qreps, qrep_nb);
   //selectReps(sources, source_nb, sreps, srep_nb);
-  //cluster queries and sources to reps
   cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
   //std::cout << "after cudaMalloc" << std::endl;  //FIXME
   print_last_error();
   //timePoint(t1);
   timePoint(t2);
   printf("cudaFree time %f\n", timeLen(t1, t2));
-  clusterReps(queries_dev, sources_dev, qreps_dev, sreps_dev, maxquery_dev,
+  /*clusterReps(queries_dev, sources_dev, qreps_dev, sreps_dev, maxquery_dev,
               q2rep_dev, s2rep_dev, rep2q_static_dev, rep2s_static_dev,
               rep2q_dyn_p_dev, rep2s_dyn_p_dev, query2reps_dev, q2rep, s2rep,
               rep2q_static, rep2s_static, rep2q_dyn_v, rep2s_dyn_v, query2reps,
-              rep2q_dyn_p, rep2s_dyn_p, reorder_members);
-  //tranfer data structures to GPU.
+              rep2q_dyn_p, rep2s_dyn_p, reorder_members);*/
+
+  //cluster queries and sources to reps
+  clusterReps(queries_dev, sources_dev, qreps_dev, sreps_dev, maxquery_dev,
+              q2rep_dev, s2rep_dev, rep2q_static_dev, rep2s_static_dev,
+              rep2q_dyn_p_dev, rep2s_dyn_p_dev, query2reps_dev, rep2q_static,
+              rep2s_static, rep2q_dyn_p, rep2s_dyn_p, reorder_members);
+
   //std::cout << "after clusterReps" << std::endl;  //FIXME
   print_last_error();
 
+  //tranfer data structures to GPU.
   AllocateAndCopyH2D(
     queries_dev, sources_dev, qreps_dev, sreps_dev, maxquery_dev, q2rep_dev,
     s2rep_dev, rep2q_static_dev, rep2s_static_dev, rep2q_dyn_p_dev,
