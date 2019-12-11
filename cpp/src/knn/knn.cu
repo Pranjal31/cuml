@@ -539,7 +539,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   printf("source rep time %f\n", timeLen(t3, t4));
 }
 
-void AllocateAndCopyH2D(float *&queries_dev, float *&sources_dev,
+/* void AllocateAndCopyH2D(float *&queries_dev, float *&sources_dev,
                         float *&qreps_dev, float *&sreps_dev,
                         float *maxquery_dev, P2R *&q2rep_dev, P2R *&s2rep_dev,
                         R2all_static_dev *&rep2q_static_dev,
@@ -549,52 +549,23 @@ void AllocateAndCopyH2D(float *&queries_dev, float *&sources_dev,
                         P2R *&q2rep, P2R *&s2rep, R2all_static *&rep2q_static,
                         R2all_static *&rep2s_static, R2all_dyn_v *&rep2q_dyn_v,
                         R2all_dyn_v *&rep2s_dyn_v, float *&query2reps,
-                        R2all_dyn_p *&rep2q_dyn_p, R2all_dyn_p *&rep2s_dyn_p) {
+                        R2all_dyn_p *&rep2q_dyn_p, R2all_dyn_p *&rep2s_dyn_p) { */
+void AllocateAndCopyH2D(R2all_static_dev *&rep2q_static_dev,
+                        R2all_static_dev *&rep2s_static_dev,
+                        R2all_static *&rep2q_static,
+                        R2all_static *&rep2s_static) {
   cudaError_t status;
-  /*
-        status = cudaMemcpy(q2rep_dev, q2rep, query_nb * sizeof(P2R), cudaMemcpyHostToDevice);
-        check(status,"Memcpy reps failed\n");
-*/
-
-  //status = cudaMemcpy(s2rep_dev, s2rep, source_nb * sizeof(P2R), cudaMemcpyHostToDevice);
-  //check(status,"Memcpy s2rep failed\n");
-
-  /* cudaMemcpy(rep2q_static_dev, rep2q_static, qrep_nb * sizeof(R2all_static_dev),
-             cudaMemcpyHostToDevice); */
   status =
     cudaMemcpy(rep2q_static_dev, rep2q_static,
                qrep_nb * sizeof(R2all_static_dev), cudaMemcpyHostToDevice);
   check(status, "Memcpy rep2qs_static failed\n");
 
-  /* cudaMemcpy(rep2s_static_dev, rep2s_static, srep_nb * sizeof(R2all_static_dev),
-             cudaMemcpyHostToDevice); */
   status =
     cudaMemcpy(rep2s_static_dev, rep2s_static,
                srep_nb * sizeof(R2all_static_dev), cudaMemcpyHostToDevice);
   check(status, "Memcpy rep2qs_static failed\n");
-
-  /*   printf("sizeof static static_dev %d %d\n", sizeof(R2all_static),
-         sizeof(R2all_static_dev)); */
   printf("sizeof static static_dev %zu %zu\n", sizeof(R2all_static),
          sizeof(R2all_static_dev));
-
-  /*
-
-        for(int i = 0; i < srep_nb; i++){
-                int nosources_local = rep2s_static[i].npoints;
-
-                if(nosources_local > 0){
-                        status = cudaMalloc((void **)&rep2s_dyn_p[i].sortedmembers, nosources_local * sizeof(IndexDist));
-                        check(status,"Malloc rep2qs_dyn source failed\n");
-                        status = cudaMemcpy(rep2s_dyn_p[i].sortedmembers, &rep2s_dyn_v[i].Vsortedmembers[0], nosources_local * sizeof(IndexDist), cudaMemcpyHostToDevice);
-                        check(status,"Memcpy rep2qs_dyn source failed\n");
-
-                }
-        }
-
-        cudaMalloc((void **)&rep2s_dyn_p_dev, srep_nb * sizeof(R2all_dyn_p));
-        cudaMemcpy(rep2s_dyn_p_dev, rep2s_dyn_p, srep_nb * sizeof(R2all_dyn_p), cudaMemcpyHostToDevice);
-        */
 }
 
 __global__ void RepsUpperBound(
@@ -1277,11 +1248,13 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   print_last_error();
 
   //tranfer data structures to GPU.
-  AllocateAndCopyH2D(
+  /*   AllocateAndCopyH2D(
     queries_dev, sources_dev, qreps_dev, sreps_dev, maxquery_dev, q2rep_dev,
     s2rep_dev, rep2q_static_dev, rep2s_static_dev, rep2q_dyn_p_dev,
     rep2s_dyn_p_dev, query2reps_dev, q2rep, s2rep, rep2q_static, rep2s_static,
-    rep2q_dyn_v, rep2s_dyn_v, query2reps, rep2q_dyn_p, rep2s_dyn_p);
+    rep2q_dyn_v, rep2s_dyn_v, query2reps, rep2q_dyn_p, rep2s_dyn_p); */
+  AllocateAndCopyH2D(rep2q_static_dev, rep2s_static_dev, rep2q_static,
+                     rep2s_static);
   timePoint(t2);
   printf("prepo time %f\n", timeLen(t1, t2));
 
