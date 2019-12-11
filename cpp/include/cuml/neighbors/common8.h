@@ -32,12 +32,20 @@ typedef struct IndexAndDist {
   float dist;
 } IndexDist;
 
-typedef struct repPoint_static {
+/* typedef struct repPoint_static {
   float maxdist = 0.0f;
   float mindist = FLT_MAX;
   uint npoints = 0;
   uint noreps = 0;
   float kuboundMax = 0.0f;
+} R2all_static; */
+
+typedef struct repPoint_static {
+  float maxdist;
+  float mindist;
+  uint npoints;
+  uint noreps;
+  float kuboundMax;
 } R2all_static;
 
 typedef struct repPoint_static_dev {

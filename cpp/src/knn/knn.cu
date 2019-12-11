@@ -268,8 +268,24 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   cublasHandle_t cublas_handle;
   checkError(cublasCreate(&cublas_handle), "cublasCreate() error!\n");
 
-  cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
+  /*   // looking for overflow bug - FIXME
+  std::cout << "qrep_nb = " << qrep_nb << ", query_nb = " << query_nb
+            << ", sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "qrep_nb * query_nb * sizeof(float) = "
+            << qrep_nb * query_nb * sizeof(float) << std::endl; */
+  //cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
+  //  cudaError_t status;   //reordered
+
   cudaError_t status;
+  status =
+    cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
+  check(status, "cMalloc 1 failed \n");
+
+  // looking for overflow bug - FIXME
+  /*   std::cout << "dim = " << dim << ", query_nb = " << query_nb
+            << ", sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "query_nb * dim * sizeof(float) = "
+            << query_nb * dim * sizeof(float) << std::endl; */
 
   status = cudaMalloc((void **)&queries_dev, query_nb * dim * sizeof(float));
   check(status, "Malloc queries failed\n");
@@ -277,16 +293,34 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                       cudaMemcpyHostToDevice);
   check(status, "Memcpy queries failed\n");
 
+  // looking for overflow bug - FIXME
+  /*   std::cout << "dim = " << dim << ", source_nb = " << source_nb
+            << ", sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "source_nb * dim * sizeof(float) = "
+            << source_nb * dim * sizeof(float) << std::endl; */
+
   status = cudaMalloc((void **)&sources_dev, source_nb * dim * sizeof(float));
   check(status, "Malloc sources failed\n");
   status = cudaMemcpy(sources_dev, sources, source_nb * dim * sizeof(float),
                       cudaMemcpyHostToDevice);
   check(status, "Mem sources failed\n");
 
+  // looking for overflow bug - FIXME
+  /*   std::cout << "dim = " << dim << ", qrep_nb = " << qrep_nb
+            << ", sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "qrep_nb * dim * sizeof(float) = "
+            << qrep_nb * dim * sizeof(float) << std::endl; */
+
   status = cudaMalloc((void **)&qreps_dev, qrep_nb * dim * sizeof(float));
   check(status, "Malloc reps failed\n");
   //status = cudaMemcpy(qreps_dev, qreps, qrep_nb * dim * sizeof(float), cudaMemcpyHostToDevice);
   //check(status,"Mem reps failed\n");
+
+  // looking for overflow bug - FIXME
+  /*   std::cout << "dim = " << dim << ", srep_nb = " << srep_nb
+            << ", sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "srep_nb * dim * sizeof(float) = "
+            << srep_nb * dim * sizeof(float) << std::endl; */
 
   status = cudaMalloc((void **)&sreps_dev, srep_nb * dim * sizeof(float));
   check(status, "Malloc reps failed\n");
@@ -296,7 +330,17 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   int totalTest = 10;
   int *qIndex_dev, *qIndex;
   qIndex = (int *)malloc(totalTest * qrep_nb * sizeof(int));
-  cudaMalloc((void **)&qIndex_dev, qrep_nb * totalTest * sizeof(int));
+
+  // looking for overflow bug - FIXME
+  /*   std::cout << "qrep_nb = " << qrep_nb << ", totalTest = " << totalTest
+            << ", sizeof(int) = " << sizeof(int) << std::endl;
+  std::cout << "qrep_nb * totalTest * sizeof(int) = "
+            << qrep_nb * totalTest * sizeof(int) << std::endl; */
+
+  //cudaMalloc((void **)&qIndex_dev, qrep_nb * totalTest * sizeof(int));
+  status = cudaMalloc((void **)&qIndex_dev, qrep_nb * totalTest * sizeof(int));
+  check(status, "cMalloc2 failed\n");
+
   srand(2015);
   for (int i = 0; i < totalTest; i++)
     for (int j = 0; j < qrep_nb; j++)
@@ -306,7 +350,15 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   //int *totalSum, *totalSum_dev;
   int *totalSum_dev;
 
-  cudaMalloc((void **)&totalSum_dev, totalTest * sizeof(float));
+  // looking for overflow bug - FIXME
+  /*   std::cout << "totalTest = " << totalTest
+            << ", sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "totalTest * sizeof(float) = " << totalTest * sizeof(float)
+            << std::endl; */
+
+  //cudaMalloc((void **)&totalSum_dev, totalTest * sizeof(float));
+  status = cudaMalloc((void **)&totalSum_dev, totalTest * sizeof(float));
+  check(status, "cMalloc 3 failed\n");
   cudaMemset(totalSum_dev, 0, totalTest * sizeof(float));
   //totalSum = (int *)malloc(totalTest * sizeof(float));  // DEAD MALLOC
 
@@ -325,7 +377,16 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                                                   qrep_nb, qIndex_dev, dim);
 
   qIndex = (int *)malloc(totalTest * srep_nb * sizeof(int));
-  cudaMalloc((void **)&qIndex_dev, srep_nb * totalTest * sizeof(int));
+
+  // looking for overflow bug - FIXME
+  /*   std::cout << "srep_nb = " << srep_nb << ", totalTest = " << totalTest
+            << ", sizeof(int) = " << sizeof(int) << std::endl;
+  std::cout << "srep_nb * totalTest * sizeof(int) = "
+            << srep_nb * totalTest * sizeof(int) << std::endl; */
+
+  //cudaMalloc((void **)&qIndex_dev, srep_nb * totalTest * sizeof(int));
+  status = cudaMalloc((void **)&qIndex_dev, srep_nb * totalTest * sizeof(int));
+  check(status, "cMalloc 4 failed\n");
 
   srand(2015);
   for (int i = 0; i < totalTest; i++)
@@ -349,24 +410,39 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                                                   srep_nb, qIndex_dev, dim);
   cudaDeviceSynchronize();
 
-  cudaMalloc((void **)&rep2q_static_dev, qrep_nb * sizeof(R2all_static_dev));
+  //cudaMalloc((void **)&rep2q_static_dev, qrep_nb * sizeof(R2all_static_dev));
+  status =
+    cudaMalloc((void **)&rep2q_static_dev, qrep_nb * sizeof(R2all_static_dev));
   check(status, "Malloc rep2qs_static failed\n");
   cudaMemcpy(rep2q_static_dev, rep2q_static, qrep_nb * sizeof(R2all_static_dev),
              cudaMemcpyHostToDevice);
-  check(status, "Memcpy rep2qs_static failed\n");
+  //check(status, "Memcpy rep2qs_static failed\n");
 
-  cudaMalloc((void **)&rep2s_static_dev, srep_nb * sizeof(R2all_static_dev));
+  //cudaMalloc((void **)&rep2s_static_dev, srep_nb * sizeof(R2all_static_dev));
+  status =
+    cudaMalloc((void **)&rep2s_static_dev, srep_nb * sizeof(R2all_static_dev));
   check(status, "Malloc rep2qs_static failed\n");
   cudaMemcpy(rep2s_static_dev, rep2s_static, srep_nb * sizeof(R2all_static_dev),
              cudaMemcpyHostToDevice);
-  check(status, "Memcpy rep2qs_static failed\n");
+  //check(status, "Memcpy rep2qs_static failed\n");
   //int block = 256;
 
   float *queryNorm_dev, *qrepNorm_dev, *sourceNorm_dev, *srepNorm_dev;
-  cudaMalloc((void **)&queryNorm_dev, query_nb * sizeof(float));
-  cudaMalloc((void **)&sourceNorm_dev, source_nb * sizeof(float));
-  cudaMalloc((void **)&qrepNorm_dev, qrep_nb * sizeof(float));
-  cudaMalloc((void **)&srepNorm_dev, srep_nb * sizeof(float));
+  //cudaMalloc((void **)&queryNorm_dev, query_nb * sizeof(float));
+  //cudaMalloc((void **)&sourceNorm_dev, source_nb * sizeof(float));
+  //cudaMalloc((void **)&qrepNorm_dev, qrep_nb * sizeof(float));
+  //cudaMalloc((void **)&srepNorm_dev, srep_nb * sizeof(float));
+
+  status = cudaMalloc((void **)&queryNorm_dev, query_nb * sizeof(float));
+  check(status, "cMalloc 5 failed\n");
+  status = cudaMalloc((void **)&sourceNorm_dev, source_nb * sizeof(float));
+  check(status, "cMalloc 6 failed\n");
+
+  status = cudaMalloc((void **)&qrepNorm_dev, qrep_nb * sizeof(float));
+  check(status, "cMalloc 7 failed\n");
+
+  status = cudaMalloc((void **)&srepNorm_dev, srep_nb * sizeof(float));
+  check(status, "cMalloc 8 failed\n");
 
   //cudaDeviceSynchronize();
   struct timespec t3, t4, t35;
@@ -400,7 +476,10 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
                                 query_nb, qrep_nb);
   //cudaMemcpy(query2reps, query2reps_dev, rep_nb * query_nb * sizeof(float), cudaMemcpyDeviceToHost);
 
-  cudaMalloc((void **)&maxquery_dev, qrep_nb * sizeof(float));
+  //cudaMalloc((void **)&maxquery_dev, qrep_nb * sizeof(float));
+  status = cudaMalloc((void **)&maxquery_dev, qrep_nb * sizeof(float));
+  check(status, "cMalloc 9 failed\n");
+
   cudaMemset(maxquery_dev, 0, qrep_nb * sizeof(float));
 
   status = cudaMalloc((void **)&q2rep_dev, query_nb * sizeof(P2R));
@@ -413,25 +492,69 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   printf("query rep first part time %f\n", timeLen(t3, t35));
 
   int *qrepsID;
-  cudaMalloc((void **)&qrepsID, qrep_nb * sizeof(int));
+  //cudaMalloc((void **)&qrepsID, qrep_nb * sizeof(int));
+  status = cudaMalloc((void **)&qrepsID, qrep_nb * sizeof(int));
+  check(status, "cMalloc 10 failed\n");
+
   cudaMemset(qrepsID, 0, qrep_nb * sizeof(int));
+
   cudaMemcpy(rep2q_static, rep2q_static_dev, qrep_nb * sizeof(R2all_static_dev),
              cudaMemcpyDeviceToHost);
-  check(status, "Memcpy rep2qs_static failed\n");
+
+  // print all elements in memory pointed by rep2q_static -- FIXME
+  /*   std::cout << "rep2q_static inside clusterReps() -- after findQCluster"
+            << std::endl;
+
   for (int i = 0; i < qrep_nb; i++) {
-    cudaMalloc((void **)&rep2q_dyn_p[i].replist, srep_nb * sizeof(IndexDist));
-    cudaMalloc((void **)&rep2q_dyn_p[i].kubound, K * sizeof(float));
-    cudaMalloc((void **)&rep2q_dyn_p[i].memberID,
-               rep2q_static[i].npoints * sizeof(int));
+    std::cout << "rep2q_static.maxdist = " << rep2q_static[i].maxdist
+              << std::endl;
+    std::cout << "rep2q_static.mindist = " << rep2q_static[i].mindist
+              << std::endl;
+    std::cout << "rep2q_static.npoints = " << rep2q_static[i].npoints
+              << std::endl;
+    std::cout << "rep2q_static.noreps = " << rep2q_static[i].noreps
+              << std::endl;
+    std::cout << "rep2q_static.kuboundMax = " << rep2q_static[i].kuboundMax
+              << std::endl;
+  } */
+
+  //check(status, "Memcpy rep2qs_static failed\n");
+  for (int i = 0; i < qrep_nb; i++) {
+    //cudaMalloc((void **)&rep2q_dyn_p[i].replist, srep_nb * sizeof(IndexDist));
+    //cudaMalloc((void **)&rep2q_dyn_p[i].kubound, K * sizeof(float));
+    //cudaMalloc((void **)&rep2q_dyn_p[i].memberID,
+    //rep2q_static[i].npoints * sizeof(int));
+
+    status =
+      cudaMalloc((void **)&rep2q_dyn_p[i].replist, srep_nb * sizeof(IndexDist));
+    check(status, "cMalloc 11 failed\n");
+
+    status = cudaMalloc((void **)&rep2q_dyn_p[i].kubound, K * sizeof(float));
+    check(status, "cMalloc 12 failed\n");
+
+    // looking for overflow bug - FIXME -- SEVERE
+    /*     std::cout << "rep2q_static[i].npoints = " << rep2q_static[i].npoints
+              << ", sizeof(int) = " << sizeof(int) << std::endl;
+    std::cout << "rep2q_static[i].npoints * sizeof(int) = "
+              << rep2q_static[i].npoints * sizeof(int) << std::endl; */
+    status = cudaMalloc((void **)&rep2q_dyn_p[i].memberID,
+                        rep2q_static[i].npoints * sizeof(int));
+    //  std::cout << "--status = " << status << std::endl;
+    check(status, "cMalloc 13 failed\n");
   }
 
-  cudaMalloc((void **)&rep2q_dyn_p_dev, qrep_nb * sizeof(R2all_dyn_p));
+  //cudaMalloc((void **)&rep2q_dyn_p_dev, qrep_nb * sizeof(R2all_dyn_p));
+  status = cudaMalloc((void **)&rep2q_dyn_p_dev, qrep_nb * sizeof(R2all_dyn_p));
+  check(status, "cMalloc 14 failed\n");
+
   cudaMemcpy(rep2q_dyn_p_dev, rep2q_dyn_p, qrep_nb * sizeof(R2all_dyn_p),
              cudaMemcpyHostToDevice);
   fillQMembers<<<(query_nb + 255) / 256, 256>>>(q2rep_dev, query_nb, qrepsID,
                                                 rep2q_dyn_p_dev);
 
-  cudaMalloc((void **)&reorder_members, query_nb * sizeof(int));
+  //cudaMalloc((void **)&reorder_members, query_nb * sizeof(int));
+  status = cudaMalloc((void **)&reorder_members, query_nb * sizeof(int));
+  check(status, "cMalloc 15 failed\n");
 
   reorderMembers<<<(qrep_nb + 255) / 256, 256>>>(
     qrep_nb, qrepsID, reorder_members, rep2q_dyn_p_dev);
@@ -441,7 +564,10 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   printf("query rep time  %f\n", timeLen(t3, t4));
   //float *source2reps = (float *)malloc(source_nb * srep_nb * sizeof(float));  DEAD MALLOC
   float *source2reps_dev;
-  cudaMalloc((void **)&source2reps_dev, source_nb * srep_nb * sizeof(float));
+  //cudaMalloc((void **)&source2reps_dev, source_nb * srep_nb * sizeof(float));
+  status =
+    cudaMalloc((void **)&source2reps_dev, source_nb * srep_nb * sizeof(float));
+  check(status, "cMalloc 16 failed\n");
 
   cudaDeviceSynchronize();
   timePoint(t3);
@@ -460,26 +586,35 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   dim3 grid2D_s((source_nb + 15) / 16, (srep_nb + 15) / 16, 1);
   AddAll<<<grid2D_s, block2D>>>(sourceNorm_dev, srepNorm_dev, source2reps_dev,
                                 source_nb, srep_nb);
-
-  /*std::cout << "source_nb = " << source_nb << ", sizeof(P2R) = " << sizeof(P2R)
+  // looking for overflow bug - FIXME
+  /*   std::cout << "source_nb = " << source_nb << ", sizeof(P2R) = " << sizeof(P2R)
             << std::endl;
   std::cout << "source_nb * sizeof(P2R) = " << source_nb * sizeof(P2R)
-            << std::endl;
-  */
+            << std::endl; */
+
   status = cudaMalloc((void **)&s2rep_dev, source_nb * sizeof(P2R));
   check(status, "Malloc s2rep failed\n");
   findTCluster<<<(source_nb + 255) / 256, 256>>>(
     source2reps_dev, s2rep_dev, source_nb, srep_nb, rep2s_static_dev);
   int *srepsID;
-  cudaMalloc((void **)&srepsID, srep_nb * sizeof(int));
+  //cudaMalloc((void **)&srepsID, srep_nb * sizeof(int));
+  status = cudaMalloc((void **)&srepsID, srep_nb * sizeof(int));
+  check(status, "cMalloc 17 failed\n");
+
   cudaMemset(srepsID, 0, srep_nb * sizeof(int));
   cudaMemcpy(rep2s_static, rep2s_static_dev, srep_nb * sizeof(R2all_static_dev),
              cudaMemcpyDeviceToHost);
   for (int i = 0; i < srep_nb; i++) {
-    cudaMalloc((void **)&rep2s_dyn_p[i].sortedmembers,
-               rep2s_static[i].npoints * sizeof(R2all_dyn_p));
+    /*  cudaMalloc((void **)&rep2s_dyn_p[i].sortedmembers,
+               rep2s_static[i].npoints * sizeof(R2all_dyn_p)); */
+    status = cudaMalloc((void **)&rep2s_dyn_p[i].sortedmembers,
+                        rep2s_static[i].npoints * sizeof(R2all_dyn_p));
+    check(status, "cMalloc 18 failed\n");
   }
-  cudaMalloc((void **)&rep2s_dyn_p_dev, srep_nb * sizeof(R2all_dyn_p));
+  //cudaMalloc((void **)&rep2s_dyn_p_dev, srep_nb * sizeof(R2all_dyn_p));
+  status = cudaMalloc((void **)&rep2s_dyn_p_dev, srep_nb * sizeof(R2all_dyn_p));
+  check(status, "cMalloc 19 failed\n");
+
   cudaMemcpy(rep2s_dyn_p_dev, rep2s_dyn_p, srep_nb * sizeof(R2all_dyn_p),
              cudaMemcpyHostToDevice);
   fillTMembers<<<(source_nb + 255) / 256, 256>>>(s2rep_dev, source_nb, srepsID,
@@ -513,7 +648,11 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
 
   timePoint(t4);
   cudaFree(query2reps_dev);
-  cudaMalloc((void **)&query2reps_dev, query_nb * srep_nb * sizeof(float));
+  //cudaMalloc((void **)&query2reps_dev, query_nb * srep_nb * sizeof(float));
+  status =
+    cudaMalloc((void **)&query2reps_dev, query_nb * srep_nb * sizeof(float));
+  check(status, "cMalloc 20 failed\n");
+
   dim3 grid2D_qsrep((query_nb + 15) / 16, (srep_nb + 15) / 16, 1);
   /*cublasSgemm('T', 'N', query_nb, srep_nb, dim, (float)-2.0, queries_dev, dim,
               sreps_dev, dim, (float)0.0, query2reps_dev, query_nb);*/
@@ -1112,13 +1251,13 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   K = k;
 
   /* FIXME */
-  std::cout << "sizeof(float) = " << sizeof(float) << std::endl;
+  /*   std::cout << "sizeof(float) = " << sizeof(float) << std::endl;
   std::cout << "query_nb = " << query_nb << std::endl;
   std::cout << "source_nb = " << source_nb << std::endl;
   std::cout << "dim = " << dim << std::endl;
   std::cout << "qrep_nb = " << qrep_nb << std::endl;
   std::cout << "srep_nb = " << srep_nb << std::endl;
-  std::cout << "K = " << K << std::endl;
+  std::cout << "K = " << K << std::endl; */
 
   /*  // with parameters used in run_sample.h
   query_nb = 145057;
@@ -1174,8 +1313,46 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   //P2R *s2rep = (P2R *)malloc(source_nb * sizeof(P2R)); //DEAD MALLOC
   R2all_static *rep2q_static =
     (R2all_static *)malloc(qrep_nb * sizeof(R2all_static));
+
+  // initializing memory pointed by rep2q_static -- FIXME
+  //  std::cout << "initializing rep2q_static" << std::endl;
+  for (int i = 0; i < qrep_nb; i++) {
+    rep2q_static[i].maxdist = 0.0f;
+    rep2q_static[i].mindist = FLT_MAX;
+    rep2q_static[i].npoints = 0;
+    rep2q_static[i].noreps = 0;
+    rep2q_static[i].kuboundMax = 0.0f;
+  }
+
+  // print all elements in memory pointed by rep2q_static -- FIXME
+  /*   std::cout << "rep2q_static before clusterReps()" << std::endl;
+
+  for (int i = 0; i < qrep_nb; i++) {
+    std::cout << "rep2q_static.maxdist = " << rep2q_static[i].maxdist
+              << std::endl;
+    std::cout << "rep2q_static.mindist = " << rep2q_static[i].mindist
+              << std::endl;
+    std::cout << "rep2q_static.npoints = " << rep2q_static[i].npoints
+              << std::endl;
+    std::cout << "rep2q_static.noreps = " << rep2q_static[i].noreps
+              << std::endl;
+    std::cout << "rep2q_static.kuboundMax = " << rep2q_static[i].kuboundMax
+              << std::endl;
+  } */
+
   R2all_static *rep2s_static =
     (R2all_static *)malloc(srep_nb * sizeof(R2all_static));
+
+  // initializing memory pointed by rep2s_static -- FIXME
+  //  std::cout << "initializing rep2s_static" << std::endl;
+  for (int i = 0; i < qrep_nb; i++) {
+    rep2s_static[i].maxdist = 0.0f;
+    rep2s_static[i].mindist = FLT_MAX;
+    rep2s_static[i].npoints = 0;
+    rep2s_static[i].noreps = 0;
+    rep2s_static[i].kuboundMax = 0.0f;
+  }
+
   /* R2all_dyn_v *rep2q_dyn_v =
     (R2all_dyn_v *)malloc(qrep_nb * sizeof(R2all_dyn_v));*/  //DEAD MALLOC
   /* R2all_dyn_v *rep2s_dyn_v =
@@ -1206,7 +1383,19 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   timePoint(t1);
   //selectReps(queries, query_nb, qreps, qrep_nb);
   //selectReps(sources, source_nb, sreps, srep_nb);
-  cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
+
+  // looking for overflow bug - FIXME
+  /*   std::cout << "qrep_nb = " << qrep_nb << ", query_nb = " << query_nb
+            << ", sizeof(float) = " << sizeof(float) << std::endl;
+  std::cout << "qrep_nb * query_nb * sizeof(float) = "
+            << qrep_nb * query_nb * sizeof(float) << std::endl; */
+
+  //cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
+  cudaError_t status;
+  status =
+    cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
+  check(status, "cMalloc 21 failed\n");
+
   //std::cout << "after cudaMalloc" << std::endl;  //FIXME
   //print_last_error();
   //timePoint(t1);
@@ -1299,12 +1488,34 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   IndexDist *knearest, *final_knearest;
   int tpq = (2048 * 13) / query_nb;
   IndexDist *knearest_h = (IndexDist *)malloc(query_nb * K * sizeof(IndexDist));
-  cudaMalloc((void **)&knearest, query_nb * (tpq + 1) * K * sizeof(IndexDist));
+
+  // looking for overflow bug - FIXME
+  /*   std::cout << "(tpq + 1) = " << tpq + 1 << ", query_nb = " << query_nb
+            << ", K = " << K << ", sizeof(IndexDist) = " << sizeof(IndexDist)
+            << std::endl;
+  std::cout << "query_nb * (tpq + 1) * K * sizeof(IndexDist) = "
+            << query_nb * (tpq + 1) * K * sizeof(IndexDist) << std::endl; */
+
+  //cudaMalloc((void **)&knearest, query_nb * (tpq + 1) * K * sizeof(IndexDist));
+  status = cudaMalloc((void **)&knearest,
+                      query_nb * (tpq + 1) * K * sizeof(IndexDist));
+  check(status, "cMalloc 22 failed\n");
+
   //  int avg_query_nb = int(query_nb / qrep_nb);
 
   if (tpq > 1) {
     float *theta;
-    cudaMalloc((void **)&theta, query_nb * sizeof(float));
+
+    // looking for overflow bug - FIXME
+    /*     std::cout << "query_nb = " << query_nb
+              << ", sizeof(float) = " << sizeof(float) << std::endl;
+    std::cout << "query_nb * sizeof(float) = " << query_nb * sizeof(float)
+              << std::endl;
+ */
+    //cudaMalloc((void **)&theta, query_nb * sizeof(float));
+    status = cudaMalloc((void **)&theta, query_nb * sizeof(float));
+    check(status, "cMalloc 23 failed\n");
+
     KNNQuery_theta<<<(query_nb + 255) / 256, 256>>>(q2rep_dev, rep2q_static_dev,
                                                     query_nb, theta);
     //cudaMemset(theta, 0, query_nb * sizeof(float));
@@ -1322,7 +1533,17 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
     final_knearest = knearest + query_nb * tpq * K;
 
     int *tag_base;
-    cudaMalloc((void **)&tag_base, tpq * query_nb * sizeof(int));
+
+    // looking for overflow bug - FIXME
+    /*     std::cout << "tpq = " << tpq << ", query_nb = " << query_nb
+              << ", sizeof(int) = " << sizeof(int) << std::endl;
+    std::cout << "tpq * query_nb * sizeof(int) = "
+              << tpq * query_nb * sizeof(int) << std::endl; */
+
+    //cudaMalloc((void **)&tag_base, tpq * query_nb * sizeof(int));
+    status = cudaMalloc((void **)&tag_base, tpq * query_nb * sizeof(int));
+    check(status, "cMalloc 24 failed\n");
+
     cudaMemset(tag_base, 0, tpq * query_nb * sizeof(int));
     final<<<(query_nb + 255) / 256, 256>>>(K, knearest, tpq, query_nb,
                                            final_knearest, tag_base);
@@ -1365,6 +1586,7 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   //  free(rep2q_dyn_v);
   //  free(rep2s_dyn_v);
   free(rep2s_static);
+  //  std::cout << "freeeeeeeeeeeeeeeeeeeeeed.........."<<std::endl;  //FIXME
   return;
 }
 
