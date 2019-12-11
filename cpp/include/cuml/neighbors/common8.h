@@ -12,8 +12,8 @@ using namespace std;
 
 float *sources;
 float *queries;
-float *qreps;
-float *sreps;
+//float *qreps;
+//float *sreps;
 
 int source_nb = 0;
 int query_nb = 0;

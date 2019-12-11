@@ -308,7 +308,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
 
   cudaMalloc((void **)&totalSum_dev, totalTest * sizeof(float));
   cudaMemset(totalSum_dev, 0, totalTest * sizeof(float));
-  //totalSum = (int *)malloc(totalTest * sizeof(float));
+  //totalSum = (int *)malloc(totalTest * sizeof(float));  // DEAD MALLOC
 
   /*   selectReps_cuda<<<(totalTest * qrep_nb * qrep_nb + 255) / 256, 256>>>(
     queries_dev, query_nb, qreps_dev, qrep_nb, qIndex_dev, totalSum_dev,
@@ -317,7 +317,6 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
     queries_dev, qrep_nb, qIndex_dev, totalSum_dev, totalTest, dim);
   cudaDeviceSynchronize();
   print_last_error();
-  cudaGetLastError();
 
   /*   selectReps_max<<<1, 1>>>(queries_dev, query_nb, qreps_dev, qrep_nb,
                            qIndex_dev, totalSum_dev, totalTest, dim); */
@@ -440,7 +439,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   cudaDeviceSynchronize();
   timePoint(t4);
   printf("query rep time  %f\n", timeLen(t3, t4));
-  //float *source2reps = (float *)malloc(source_nb * srep_nb * sizeof(float));  DEAD-MALLOC
+  //float *source2reps = (float *)malloc(source_nb * srep_nb * sizeof(float));  DEAD MALLOC
   float *source2reps_dev;
   cudaMalloc((void **)&source2reps_dev, source_nb * srep_nb * sizeof(float));
 
@@ -462,6 +461,11 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   AddAll<<<grid2D_s, block2D>>>(sourceNorm_dev, srepNorm_dev, source2reps_dev,
                                 source_nb, srep_nb);
 
+  /*std::cout << "source_nb = " << source_nb << ", sizeof(P2R) = " << sizeof(P2R)
+            << std::endl;
+  std::cout << "source_nb * sizeof(P2R) = " << source_nb * sizeof(P2R)
+            << std::endl;
+  */
   status = cudaMalloc((void **)&s2rep_dev, source_nb * sizeof(P2R));
   check(status, "Malloc s2rep failed\n");
   findTCluster<<<(source_nb + 255) / 256, 256>>>(
@@ -481,7 +485,7 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   fillTMembers<<<(source_nb + 255) / 256, 256>>>(s2rep_dev, source_nb, srepsID,
                                                  rep2s_dyn_p_dev);
   timePoint(t3);
-  //cudaStream_t *streamID = (cudaStream_t *)malloc(srep_nb * sizeof(cudaStream_t));
+  //cudaStream_t *streamID = (cudaStream_t *)malloc(srep_nb * sizeof(cudaStream_t));  //DEAD MALLOC
 #pragma omp parallel for
   for (int i = 0; i < srep_nb; i++) {
     //cudaStreamCreate(&streamID[i]);
@@ -1100,8 +1104,8 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   int rc = pthread_create(&thread2, NULL, work, NULL);
   //cudaFree(0);
 
-  query_nb = 145057;
-  source_nb = 145057;
+  query_nb = n;   //145057;
+  source_nb = n;  //145057;
   dim = D;
   qrep_nb = 800;
   srep_nb = 800;
@@ -1126,21 +1130,21 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   */
   sources = (float *)malloc(source_nb * dim * sizeof(float));
   //std::cout << "after sources malloc" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
   queries = (float *)malloc(query_nb * dim * sizeof(float));
   //std::cout << "after queries malloc`" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
 
   //Setup for source and query points.
   cudaMemcpy(sources, search_items, source_nb * dim * sizeof(float),
              cudaMemcpyDeviceToHost);
   //std::cout << "after cudaMemCpy1" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
   cudaMemcpy(queries, search_items, query_nb * dim * sizeof(float),
              cudaMemcpyDeviceToHost);
 
   //std::cout << "after cudaMemCpy2" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
 
   /* // print sources first row -- FIXME
   std::cout << "sf:" << std::endl;
@@ -1164,22 +1168,22 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
     std::cout << "}}} " << queries[dim * (source_nb - 1) + j] << std::endl;
   }
  */
-  qreps = (float *)malloc(qrep_nb * dim * sizeof(float));
-  sreps = (float *)malloc(srep_nb * dim * sizeof(float));
-  P2R *q2rep = (P2R *)malloc(query_nb * sizeof(P2R));
-  P2R *s2rep = (P2R *)malloc(source_nb * sizeof(P2R));
+  //qreps = (float *)malloc(qrep_nb * dim * sizeof(float)); //DEAD MALLOC
+  //sreps = (float *)malloc(srep_nb * dim * sizeof(float)); //DEAD MALLOC
+  //P2R *q2rep = (P2R *)malloc(query_nb * sizeof(P2R)); //DEAD MALLOC
+  //P2R *s2rep = (P2R *)malloc(source_nb * sizeof(P2R)); //DEAD MALLOC
   R2all_static *rep2q_static =
     (R2all_static *)malloc(qrep_nb * sizeof(R2all_static));
   R2all_static *rep2s_static =
     (R2all_static *)malloc(srep_nb * sizeof(R2all_static));
-  R2all_dyn_v *rep2q_dyn_v =
-    (R2all_dyn_v *)malloc(qrep_nb * sizeof(R2all_dyn_v));
-  R2all_dyn_v *rep2s_dyn_v =
-    (R2all_dyn_v *)malloc(srep_nb * sizeof(R2all_dyn_v));
+  /* R2all_dyn_v *rep2q_dyn_v =
+    (R2all_dyn_v *)malloc(qrep_nb * sizeof(R2all_dyn_v));*/  //DEAD MALLOC
+  /* R2all_dyn_v *rep2s_dyn_v =
+    (R2all_dyn_v *)malloc(srep_nb * sizeof(R2all_dyn_v)); */  //DEAD MALLOC
   //std::cout << "after manyMallocs" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
 
-  float *query2reps = (float *)malloc(query_nb * qrep_nb * sizeof(float));
+  //  float *query2reps = (float *)malloc(query_nb * qrep_nb * sizeof(float)); //DEAD MALLOC
 
   float *queries_dev, *sources_dev, *qreps_dev, *sreps_dev;
   P2R *q2rep_dev, *s2rep_dev;
@@ -1197,14 +1201,14 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   R2all_dyn_p *rep2s_dyn_p =
     (R2all_dyn_p *)malloc(srep_nb * sizeof(R2all_dyn_p));
   //std::cout << "after twoMallocs" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
   //Select reps
   timePoint(t1);
   //selectReps(queries, query_nb, qreps, qrep_nb);
   //selectReps(sources, source_nb, sreps, srep_nb);
   cudaMalloc((void **)&query2reps_dev, qrep_nb * query_nb * sizeof(float));
   //std::cout << "after cudaMalloc" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
   //timePoint(t1);
   timePoint(t2);
   printf("cudaFree time %f\n", timeLen(t1, t2));
@@ -1221,7 +1225,7 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
               rep2s_static, rep2q_dyn_p, rep2s_dyn_p, reorder_members);
 
   //std::cout << "after clusterReps" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
 
   //tranfer data structures to GPU.
   /*   AllocateAndCopyH2D(
@@ -1243,7 +1247,7 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
             << cudaGetErrorString(cudaPeekAtLastError()) << std::endl;
 */
   //std::cout << "after AllocateAndCopyH2D" << std::endl;  //FIXME
-  print_last_error();
+  //print_last_error();
 
   if (cudaGetLastError() != cudaSuccess) cout << "error 16" << endl;
 
@@ -1271,7 +1275,7 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
 #pragma omp parallel for
   for (int i = 0; i < qrep_nb; i++) {
     //printf("replist len %d\n",rep2q_static[i].noreps);
-    //IndexDist *tmp = (IndexDist *)malloc(rep2qs_static[i].noreps*sizeof(IndexDist));
+    //IndexDist *tmp = (IndexDist *)malloc(rep2qs_static[i].noreps*sizeof(IndexDist));   //DEAD MALLOC
     vector<IndexDist> temp;
     temp.resize(rep2q_static[i].noreps);
     cudaMemcpy(&temp[0], rep2q_dyn_p[i].replist,
@@ -1353,14 +1357,14 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
 
   free(queries);
   free(sources);
-  free(qreps);
-  free(sreps);
-  free(q2rep);
-  free(s2rep);
+  //  free(qreps);
+  //  free(sreps);
+  //  free(q2rep);
+  //  free(s2rep);
   free(rep2q_static);
-  free(rep2q_dyn_v);
+  //  free(rep2q_dyn_v);
+  //  free(rep2s_dyn_v);
   free(rep2s_static);
-  free(rep2s_dyn_v);
   return;
 }
 
