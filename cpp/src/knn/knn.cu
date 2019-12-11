@@ -188,9 +188,12 @@ __global__ void reorderMembers(int rep_nb, int *repsID, int *reorder_members,
     }
   }
 }
-__global__ void selectReps_cuda(float *queries_dev, int query_nb,
+/* __global__ void selectReps_cuda(float *queries_dev, int query_nb,
                                 float *qreps_dev, int qrep_nb, int *qIndex_dev,
-                                int *totalSum_dev, int totalTest, int dim) {
+                                int *totalSum_dev, int totalTest, int dim) { */
+__global__ void selectReps_cuda(float *queries_dev, int qrep_nb,
+                                int *qIndex_dev, int *totalSum_dev,
+                                int totalTest, int dim) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < totalTest * qrep_nb * qrep_nb) {
     int test = tid / (qrep_nb * qrep_nb);
@@ -205,9 +208,10 @@ __global__ void selectReps_cuda(float *queries_dev, int query_nb,
   }
 }
 __device__ int repTest = 0;
-__global__ void selectReps_max(float *queries_dev, int query_nb,
+/* __global__ void selectReps_max(float *queries_dev, int query_nb,
                                float *qreps_dev, int qrep_nb, int *qIndex_dev,
-                               int *totalSum_dev, int totalTest, int dim) {
+                               int *totalSum_dev, int totalTest, int dim) { */
+__global__ void selectReps_max(int *totalSum_dev, int totalTest) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid == 0) {
     float distance = 0.0f;
@@ -221,9 +225,12 @@ __global__ void selectReps_max(float *queries_dev, int query_nb,
     printf("repTest %d\n", repTest);
   }
 }
-__global__ void selectReps_copy(float *queries_dev, int query_nb,
+/* __global__ void selectReps_copy(float *queries_dev, int query_nb,
                                 float *qreps_dev, int qrep_nb, int *qIndex_dev,
-                                int *totalSum_dev, int totalTest, int dim) {
+                                int *totalSum_dev, int totalTest, int dim) { */
+
+__global__ void selectReps_copy(float *queries_dev, float *qreps_dev,
+                                int qrep_nb, int *qIndex_dev, int dim) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < qrep_nb) {
     memcpy(qreps_dev + tid * dim,
@@ -303,19 +310,20 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
   cudaMemset(totalSum_dev, 0, totalTest * sizeof(float));
   //totalSum = (int *)malloc(totalTest * sizeof(float));
 
-  selectReps_cuda<<<(totalTest * qrep_nb * qrep_nb + 255) / 256, 256>>>(
+  /*   selectReps_cuda<<<(totalTest * qrep_nb * qrep_nb + 255) / 256, 256>>>(
     queries_dev, query_nb, qreps_dev, qrep_nb, qIndex_dev, totalSum_dev,
-    totalTest, dim);
-
+    totalTest, dim); */
+  selectReps_cuda<<<(totalTest * qrep_nb * qrep_nb + 255) / 256, 256>>>(
+    queries_dev, qrep_nb, qIndex_dev, totalSum_dev, totalTest, dim);
   cudaDeviceSynchronize();
   print_last_error();
   cudaGetLastError();
 
-  selectReps_max<<<1, 1>>>(queries_dev, query_nb, qreps_dev, qrep_nb,
-                           qIndex_dev, totalSum_dev, totalTest, dim);
-  selectReps_copy<<<(qrep_nb + 255) / 256, 256>>>(
-    queries_dev, query_nb, qreps_dev, qrep_nb, qIndex_dev, totalSum_dev,
-    totalTest, dim);
+  /*   selectReps_max<<<1, 1>>>(queries_dev, query_nb, qreps_dev, qrep_nb,
+                           qIndex_dev, totalSum_dev, totalTest, dim); */
+  selectReps_max<<<1, 1>>>(totalSum_dev, totalTest);
+  selectReps_copy<<<(qrep_nb + 255) / 256, 256>>>(queries_dev, qreps_dev,
+                                                  qrep_nb, qIndex_dev, dim);
 
   qIndex = (int *)malloc(totalTest * srep_nb * sizeof(int));
   cudaMalloc((void **)&qIndex_dev, srep_nb * totalTest * sizeof(int));
@@ -329,15 +337,17 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
 
   cudaMemset(totalSum_dev, 0, totalTest * sizeof(float));
 
+  /* selectReps_cuda<<<(totalTest * srep_nb * srep_nb + 255) / 256, 256>>>(
+    sources_dev, source_nb, sreps_dev, srep_nb, qIndex_dev, totalSum_dev,
+    totalTest, dim); */
   selectReps_cuda<<<(totalTest * srep_nb * srep_nb + 255) / 256, 256>>>(
-    sources_dev, source_nb, sreps_dev, srep_nb, qIndex_dev, totalSum_dev,
-    totalTest, dim);
-  selectReps_max<<<1, 1>>>(sources_dev, source_nb, sreps_dev, srep_nb,
-                           qIndex_dev, totalSum_dev, totalTest, dim);
+    sources_dev, srep_nb, qIndex_dev, totalSum_dev, totalTest, dim);
+  /*   selectReps_max<<<1, 1>>>(sources_dev, source_nb, sreps_dev, srep_nb,
+                           qIndex_dev, totalSum_dev, totalTest, dim); */
+  selectReps_max<<<1, 1>>>(totalSum_dev, totalTest);
 
-  selectReps_copy<<<(srep_nb + 255) / 256, 256>>>(
-    sources_dev, source_nb, sreps_dev, srep_nb, qIndex_dev, totalSum_dev,
-    totalTest, dim);
+  selectReps_copy<<<(srep_nb + 255) / 256, 256>>>(sources_dev, sreps_dev,
+                                                  srep_nb, qIndex_dev, dim);
   cudaDeviceSynchronize();
 
   cudaMalloc((void **)&rep2q_static_dev, qrep_nb * sizeof(R2all_static_dev));
@@ -470,32 +480,6 @@ void clusterReps(float *&queries_dev, float *&sources_dev, float *&qreps_dev,
              cudaMemcpyHostToDevice);
   fillTMembers<<<(source_nb + 255) / 256, 256>>>(s2rep_dev, source_nb, srepsID,
                                                  rep2s_dyn_p_dev);
-
-  /*
-        cudaMemcpy(source2reps, source2reps_dev, srep_nb * source_nb * sizeof(float), cudaMemcpyDeviceToHost);
-        for(int i = 0; i < source_nb; i++){
-                float distance = FLT_MAX;
-                int repIndex = -1;
-                for(int j = 0; j < srep_nb; j++){
-                        float len = source2reps[j * source_nb + i];//Edistance(getPoint(sources,i), getPoint(reps,j));
-                        if(distance > len){
-                                distance = len;
-                                repIndex = j;
-                        }
-                }
-                s2rep[i].repIndex = repIndex;
-                s2rep[i].dist2rep = distance;
-                */
-  /*
-                rep2qs_dyn_v[repIndex].VsortedIndex.push_back(i);
-                rep2qs_dyn_v[repIndex].VsortedDist.push_back(distance);
-                */
-  /*
-                IndexDist temp = {i, distance};
-                rep2s_dyn_v[repIndex].Vsortedmembers.push_back(temp);
-
-        }
-        */
   timePoint(t3);
   //cudaStream_t *streamID = (cudaStream_t *)malloc(srep_nb * sizeof(cudaStream_t));
 #pragma omp parallel for
@@ -656,7 +640,7 @@ __global__ void FilterReps(float *qreps_dev, float *sreps_dev,
   }
 }
 
-__global__ void NearReps(float *queries_dev, float *sources_dev,
+/* __global__ void NearReps(float *queries_dev, float *sources_dev,
                          float *reps_dev, float *query2reps_dev, P2R *q2rep_dev,
                          P2R *s2rep_dev, R2all_static_dev *rep2qs_static_dev,
                          R2all_dyn_p *rep2qs_dyn_p_dev, int query_nb,
@@ -677,8 +661,8 @@ __global__ void NearReps(float *queries_dev, float *sources_dev,
     temp[index] = temp[0];
     temp[0] = tmp;
   }
-}
-__global__ void SortReps(float *queries_dev, float *sources_dev,
+} */
+/* __global__ void SortReps(float *queries_dev, float *sources_dev,
                          float *reps_dev, float *query2reps_dev, P2R *q2rep_dev,
                          P2R *s2rep_dev, R2all_static_dev *rep2qs_static_dev,
                          R2all_dyn_p *rep2qs_dyn_p_dev, int query_nb,
@@ -695,14 +679,14 @@ __global__ void SortReps(float *queries_dev, float *sources_dev,
         }
       }
   }
-}
+} */
 __device__ int Total = 0;
 __global__ void printTotal() {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid == 0) printf("Total %d\n", Total);
 }
 
-__global__ void KNNQuery_base3(
+/* __global__ void KNNQuery_base3(
   float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
   float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
   R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
@@ -784,16 +768,10 @@ __global__ void KNNQuery_base3(
         }
       }
     }
-    //memcpy(&knearest1[tid * K], knearest, 20 * sizeof(IndexDist));
-    /*
-                if(tid == 100)
-                        for(int i = 0; i < K; i++)
-                                printf("tid i Index Dist %d %d %d %.10f\n",tid, i, knearest[tid * K + i].index, knearest[tid * K +i].dist);
-                */
   }
-}
+} */
 
-__global__ void KNNQuery_base2(
+/* __global__ void KNNQuery_base2(
   float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
   float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
   R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
@@ -877,14 +855,8 @@ __global__ void KNNQuery_base2(
         }
       }
     }
-    //memcpy(&knearest1[tid * K], knearest, 20 * sizeof(IndexDist));
-    /*
-                if(tid == 100)
-                        for(int i = 0; i < K; i++)
-                                printf("tid i Index Dist %d %d %d %.10f\n",tid, i, knearest[tid * K + i].index, knearest[tid * K +i].dist);
-                */
   }
-}
+} */
 /* __global__ void KNNQuery_base(
   float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
   float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
@@ -893,13 +865,10 @@ __global__ void KNNQuery_base2(
   int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K,
   IndexDist *knearest1, int *reorder_members) { */
 __global__ void KNNQuery_base(
-      float *queries_dev, float *sources_dev,
-      float *query2reps_dev, P2R *q2rep_dev,
-      R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
-      R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
-      int query_nb,int dim, int K,
-      IndexDist *knearest1, int *reorder_members) {
-
+  float *queries_dev, float *sources_dev, float *query2reps_dev, P2R *q2rep_dev,
+  R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
+  R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
+  int query_nb, int dim, int K, IndexDist *knearest1, int *reorder_members) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < query_nb) {
     tid = reorder_members[tid];
@@ -1355,10 +1324,9 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
                                            final_knearest, tag_base);
   } else {
     KNNQuery_base<<<(query_nb + 255) / 256, 256>>>(
-      queries_dev, sources_dev, query2reps_dev,
-      q2rep_dev, rep2q_static_dev, rep2q_dyn_p_dev,
-      rep2s_static_dev, rep2s_dyn_p_dev, query_nb,
-      dim, K, knearest, reorder_members);
+      queries_dev, sources_dev, query2reps_dev, q2rep_dev, rep2q_static_dev,
+      rep2q_dyn_p_dev, rep2s_static_dev, rep2s_dyn_p_dev, query_nb, dim, K,
+      knearest, reorder_members);
   }
   cudaDeviceSynchronize();
   timePoint(t2);
