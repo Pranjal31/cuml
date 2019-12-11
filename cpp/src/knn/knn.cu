@@ -979,13 +979,9 @@ __global__ void KNNQuery_base(
                 */
   }
 }
-__global__ void KNNQuery_theta(
-  float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
-  float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
-  R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
-  R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
-  int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K,
-  IndexDist *knearest, float *thetas) {
+__global__ void KNNQuery_theta(P2R *q2rep_dev,
+                               R2all_static_dev *rep2q_static_dev, int query_nb,
+                               float *thetas) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < query_nb) {
     int repIndex = q2rep_dev[tid].repIndex;
@@ -1338,11 +1334,8 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   if (tpq > 1) {
     float *theta;
     cudaMalloc((void **)&theta, query_nb * sizeof(float));
-    KNNQuery_theta<<<(query_nb + 255) / 256, 256>>>(
-      queries_dev, sources_dev, qreps_dev, sreps_dev, query2reps_dev,
-      maxquery_dev, q2rep_dev, s2rep_dev, rep2q_static_dev, rep2q_dyn_p_dev,
-      rep2s_static_dev, rep2s_dyn_p_dev, query_nb, source_nb, qrep_nb, srep_nb,
-      dim, K, knearest, theta);
+    KNNQuery_theta<<<(query_nb + 255) / 256, 256>>>(q2rep_dev, rep2q_static_dev,
+                                                    query_nb, theta);
     //cudaMemset(theta, 0, query_nb * sizeof(float));
     cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
