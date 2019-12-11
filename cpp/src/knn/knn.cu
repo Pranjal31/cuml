@@ -568,12 +568,19 @@ void AllocateAndCopyH2D(R2all_static_dev *&rep2q_static_dev,
          sizeof(R2all_static_dev));
 }
 
-__global__ void RepsUpperBound(
+/* __global__ void RepsUpperBound(
   float *queries_dev, float *sources_dev, float *qreps_dev, float *sreps_dev,
   float *query2reps_dev, float *maxquery_dev, P2R *q2rep_dev, P2R *s2rep_dev,
   R2all_static_dev *rep2q_static_dev, R2all_dyn_p *rep2q_dyn_p_dev,
   R2all_static_dev *rep2s_static_dev, R2all_dyn_p *rep2s_dyn_p_dev,
-  int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K) {
+  int query_nb, int source_nb, int qrep_nb, int srep_nb, int dim, int K) { */
+__global__ void RepsUpperBound(float *qreps_dev, float *sreps_dev,
+                               float *maxquery_dev,
+                               R2all_static_dev *rep2q_static_dev,
+                               R2all_dyn_p *rep2q_dyn_p_dev,
+                               R2all_static_dev *rep2s_static_dev,
+                               R2all_dyn_p *rep2s_dyn_p_dev, int qrep_nb,
+                               int srep_nb, int dim, int K) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < qrep_nb) {
     //if(fabs(maxquery_dev[tid]-rep2qs_static_dev[tid].maxquery)>0.01)
@@ -1274,10 +1281,8 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
   //Kernel 1: upperbound for each rep
   //timePoint(t1);
   RepsUpperBound<<<(qrep_nb + 255) / 256, 256>>>(
-    queries_dev, sources_dev, qreps_dev, sreps_dev, query2reps_dev,
-    maxquery_dev, q2rep_dev, s2rep_dev, rep2q_static_dev, rep2q_dyn_p_dev,
-    rep2s_static_dev, rep2s_dyn_p_dev, query_nb, source_nb, qrep_nb, srep_nb,
-    dim, K);
+    qreps_dev, sreps_dev, maxquery_dev, rep2q_static_dev, rep2q_dyn_p_dev,
+    rep2s_static_dev, rep2s_dyn_p_dev, qrep_nb, srep_nb, dim, K);
 
   if (cudaGetLastError() != cudaSuccess)
     cout << "Kernel RepsUpperBound failed" << endl;
