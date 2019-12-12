@@ -73,10 +73,6 @@ cdef extern from "cuml/neighbors/knn.hpp" namespace "ML":
     ) except +
 
     void sweet_knn(
-        cumlHandle &handle,
-        float **input,
-        int *sizes,
-        int n_params,
         int D,
         float *search_items,
         int n,
@@ -474,10 +470,6 @@ class NearestNeighbors(Base):
             )
         elif self.algorithm == "sweet":
             sweet_knn(
-                handle_[0],
-                <float**>inputs,
-                <int*>sizes,
-                <int>self.n_indices,
                 <int>self.n_dims,
                 <float*>x_ctype_st,
                 <int>N,
@@ -535,10 +527,6 @@ class NearestNeighbors(Base):
             )
         elif self.algorithm == "sweet":
             sweet_knn(
-                handle_[0],
-                <float**>input_arr,
-                <int*>sizes_arr,
-                <int>self.n_indices,
                 <int>self.n_dims,
                 <float*>x,
                 <int>N,
