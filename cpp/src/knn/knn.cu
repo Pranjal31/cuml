@@ -1564,10 +1564,28 @@ void sweet_knn(cumlHandle &handle, float **input, int *sizes, int n_params,
     cudaMemcpy(knearest_h, knearest, query_nb * K * sizeof(IndexDist),
                cudaMemcpyDeviceToHost);
 
+  // print top k neighbors for i = 100
   int i = 100;
   for (int j = 0; j < K; j++)
     printf("i,k %d %d  %d %f\n", i, j, knearest_h[i * K + j].index,
            knearest_h[i * K + j].dist);
+
+  // store resulting indices and distances into result arrays
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < K; j++) {
+      //  std::cout << "i = " << i << ", j = " << j << std::endl;
+
+      cudaMemcpy(res_I + (i * K + j), knearest_h + (i * K + j), sizeof(int),
+                 cudaMemcpyHostToDevice);
+      cudaMemcpy(res_D + (i * K + j),
+                 (char *)(knearest_h + (i * K + j)) + sizeof(int),
+                 sizeof(float), cudaMemcpyHostToDevice);
+
+      //res_I[i * K + j] = knearest_h[i * K + j].index;
+      //res_D[i * K + j] = knearest_h[i * K + j].dist;
+    }
+  }
+
   /*
         for(int i =0 ;i < 1000;i++)
                 for(int j=0;j<K;j++)
